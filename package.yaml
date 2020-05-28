@@ -1,0 +1,75 @@
+name:                clash-prelude-extra
+version:             0.1.0.0
+github:              "IchiroKawashima/clash-prelude-extra"
+license:             BSD3
+author:              "Ichiro Kawashima"
+maintainer:          "Kawashima.ichiro172@mail.kyutech.jp"
+copyright:           "2020 Ichiro Kawashima"
+
+extra-source-files:
+- README.md
+
+description:         Please see the README on GitHub at <https://github.com/IchiroKawashima/clash-prelude-extra#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- ghc-typelits-extra
+- ghc-typelits-knownnat
+- ghc-typelits-natnormalise
+- clash-ghc
+- clash-lib
+- clash-prelude
+- singletons
+- constraints
+- extra
+
+ghc-options:
+- -fplugin=GHC.TypeLits.Normalise
+- -fplugin=GHC.TypeLits.Extra.Solver
+- -fplugin=GHC.TypeLits.KnownNat.Solver
+- -Wall
+
+default-extensions:
+- BinaryLiterals
+- ConstraintKinds
+- DataKinds
+- NoDatatypeContexts
+- DeriveAnyClass
+- DeriveGeneric
+- DeriveLift
+- DerivingStrategies
+- ExplicitForAll
+- ExplicitNamespaces
+- FlexibleContexts
+- FlexibleInstances
+- NoImplicitPrelude
+- KindSignatures
+- MagicHash
+- MonoLocalBinds
+- NoMonomorphismRestriction
+- NondecreasingIndentation
+- QuasiQuotes
+- ScopedTypeVariables
+- NoStarIsType
+- TemplateHaskell
+- TemplateHaskellQuotes
+- TypeApplications
+- TypeFamilies
+- TypeOperators
+- NoStarIsType
+
+library:
+  source-dirs: src
+
+tests:
+  clash-prelude-extra-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - clash-prelude-extra
+    - hspec
+    - QuickCheck

@@ -1,0 +1,21 @@
+# Ignore All
+*
+!*/
+
+# Git
+!*.gitignore
+!/README.md
+
+# Github
+!/.github/workflows/*.yml
+
+# Haskell
+!/app/**/*.hs
+!/src/**/*.hs
+!/test/**/*.hs
+!/script/**/*.hs
+
+# Stack
+!/package.yaml
+!/stack.yaml
+!/Setup.hs

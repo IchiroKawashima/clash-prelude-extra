@@ -287,7 +287,7 @@ ramDF :: forall dom n a
       => Vec (2 ^ n) a
       -> DataFlow dom (Bool, Bool) Bool ((Unsigned n, a), Unsigned n) a
 ramDF mem = DF $ \(unbundle -> (iwadrdat, iradr)) (unbundle -> (iwvld, irvld)) orrdy ->
-    let ordat = readNew (blockRamPow2 mem) iradr $ mux iwvld (Just <$> iwadrdat) $ pure Nothing
+    let ordat = readNew (blockRamPow2 mem) iradr $ ($>) <$> (guard <$> iwvld) <*> iwadrdat
         orvld = register False irvld
         iwrdy = pure True
         irrdy = orrdy

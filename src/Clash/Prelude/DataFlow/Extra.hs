@@ -3,6 +3,7 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE GADTs #-}
 
 module Clash.Prelude.DataFlow.Extra where
 
@@ -13,11 +14,13 @@ import           Data.Functor                   ( ($>) )
 import           Data.Proxy
 import           Data.Kind
 import           Data.Singletons
+import           Data.Singletons.TH      hiding ( type (<=) )
 import           Data.Constraint         hiding ( (&&&) )
 import           Data.Constraint.Nat
 import           Data.Maybe
 import           Data.Tuple.Extra
 import           Data.Either.Extra
+import           GHC.Stack
 import           Debug.Trace
 
 decompressLogic :: forall i o
@@ -275,3 +278,45 @@ traceDF name = DF $ \idata ivld ordy -> unbundle $ do
     r' <- register undefined ordy
 
     pure $ trace (name <> ": " <> showX (d', v', r')) (d, v, r)
+
+ramDF :: forall dom n a
+       . HasCallStack
+      => HiddenClockResetEnable dom
+      => KnownNat n
+      => NFDataX a
+      => Vec (2 ^ n) a
+      -> DataFlow dom (Bool, Bool) Bool ((Unsigned n, a), Unsigned n) a
+ramDF mem = DF $ \(unbundle -> (iwadrdat, iradr)) (unbundle -> (iwvld, irvld)) orrdy ->
+    let ordat = readNew (blockRamPow2 mem) iradr $ mux iwvld (Just <$> iwadrdat) $ pure Nothing
+        orvld = register False irvld
+        iwrdy = pure True
+        irrdy = orrdy
+    in  (ordat, orvld, bundle (iwrdy, irrdy))
+
+$(singletons [d| data QueueMode = None | Mono | Multi |])
+
+queueDF :: forall dom mode a
+         . HasCallStack
+        => HiddenClockResetEnable dom
+        => NFDataX a => SQueueMode mode -> DataFlow dom Bool Bool a a
+queueDF mode = case mode of
+    SNone -> idDF
+
+    SMono -> DF $ \idat ivld ordy ->
+        let put  = not <$> busy .&&. ivld
+            get  = busy .&&. ordy
+            busy = register False $ mux busy (not <$> get) put
+            temp = regEn undefined put idat
+        in  (temp, busy, not <$> busy)
+
+    SMulti -> DF $ \idat ivld ordy ->
+        let put0  = busy1 .||. ivld
+            put1  = busy0 .&&. ivld .&&. not <$> ordy
+            get0  = not <$> busy1 .&&. ordy .&&. not <$> ivld
+            get1  = not <$> busy0 .||. ordy
+            busy0 = register False $ mux busy0 (not <$> get0) put0
+            busy1 = register False $ mux busy1 (not <$> get1) put1
+            temp0 = regEn undefined put0 (mux get1 temp1 idat)
+            temp1 = regEn undefined put1 idat
+        in  (temp0, busy0, not <$> busy1)
+

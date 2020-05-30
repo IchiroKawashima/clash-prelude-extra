@@ -27,6 +27,8 @@ ghc-options:
 - -fplugin=GHC.TypeLits.Normalise
 - -fplugin=GHC.TypeLits.Extra.Solver
 - -fplugin=GHC.TypeLits.KnownNat.Solver
+- -fexpose-all-unfoldings
+- -fno-worker-wrapper
 - -Wall
 
 default-extensions:

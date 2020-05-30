@@ -254,6 +254,22 @@ flipDF = DF $ \idat ivld ordy -> (flipEither <$> idat, ivld, ordy)
     flipEither (Left  x) = Right x
     flipEither (Right x) = Left x
 
+parDF' :: forall dom a b c d
+        . DataFlow dom Bool Bool a b
+       -> DataFlow dom Bool Bool c d
+       -> DataFlow dom Bool Bool (a, c) (b, d)
+f `parDF'` g = stepLock `seqDF` (f `parDF` g) `seqDF` lockStep
+
+firstDF' :: forall dom a b c . DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (c, a) (c, b)
+firstDF' f = idDF `parDF'` f
+
+secondDF' :: forall dom a b c . DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (a, c) (b, c)
+secondDF' g = g `parDF'` idDF
+
+swapDF' :: forall dom a b . DataFlow dom Bool Bool (a, b) (b, a)
+swapDF' = DF $ \idat ivld ordy -> (swapTuple <$> idat, ivld, ordy)
+    where swapTuple ~(a, b) = (b, a)
+
 sourceDF :: forall dom en a b . DataFlow dom en (Bool, en) a (b, a)
 sourceDF =
     (DF $ \d v (unbundle -> (_, r)) -> (bundle (pure undefined, d), bundle (pure undefined, v), r))

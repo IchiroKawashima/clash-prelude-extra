@@ -7,7 +7,7 @@
 
 module Clash.Prelude.DataFlow.Extra where
 
-import           Clash.Prelude           hiding ( last )
+import           Clash.Explicit.Prelude
 import           Clash.Signal.Internal          ( Signal((:-)) )
 import           Control.Monad                  ( guard )
 import           Data.Functor                   ( ($>) )
@@ -49,9 +49,14 @@ decompressInit :: forall i . Maybe i
 decompressInit = Nothing
 
 decompressDF :: forall dom i o
-              . HiddenClockResetEnable dom
-             => NFDataX i => (i -> (o, Maybe i)) -> DataFlow dom Bool Bool i (Bool, o)
-decompressDF f = DF $ curry3 $ decompressLogic f <^> decompressInit
+              . KnownDomain dom
+             => NFDataX i
+             => Clock dom
+             -> Reset dom
+             -> Enable dom
+             -> (i -> (o, Maybe i))
+             -> DataFlow dom Bool Bool i (Bool, o)
+decompressDF clk rst ena f = DF $ curry3 $ mealyB clk rst ena (decompressLogic f) decompressInit
 {-# NOINLINE decompressDF #-}
 
 compressLogic :: forall i o
@@ -80,9 +85,14 @@ compressInit :: forall o . Maybe o
 compressInit = Nothing
 
 compressDF :: forall dom i o
-            . HiddenClockResetEnable dom
-           => NFDataX o => (Maybe o -> i -> o) -> DataFlow dom Bool Bool (Bool, i) o
-compressDF f = DF $ curry3 $ compressLogic f <^> compressInit
+            . KnownDomain dom
+           => NFDataX o
+           => Clock dom
+           -> Reset dom
+           -> Enable dom
+           -> (Maybe o -> i -> o)
+           -> DataFlow dom Bool Bool (Bool, i) o
+compressDF clk rst ena f = DF $ curry3 $ mealyB clk rst ena (compressLogic f) compressInit
 {-# NOINLINE compressDF #-}
 
 data UnfoldDF (i :: Type) (f :: TyFun Nat Type) :: Type
@@ -283,46 +293,67 @@ sinkDF =
                 )
 
 traceDF :: forall dom en a
-         . HiddenClockResetEnable dom
-        => ShowX en => ShowX a => NFDataX en => NFDataX a => String -> DataFlow dom en en a a
-traceDF name = DF $ \idata ivld ordy -> unbundle $ do
+         . KnownDomain dom
+        => ShowX en
+        => ShowX a
+        => NFDataX en
+        => NFDataX a
+        => Clock dom
+        -> Reset dom
+        -> Enable dom
+        -> String
+        -> DataFlow dom en en a a
+traceDF clk rst ena name = DF $ \idata ivld ordy -> unbundle $ do
     d  <- idata
     v  <- ivld
     r  <- ordy
-    d' <- register undefined idata
-    v' <- register undefined ivld
-    r' <- register undefined ordy
+    d' <- register clk rst ena undefined idata
+    v' <- register clk rst ena undefined ivld
+    r' <- register clk rst ena undefined ordy
 
     pure $ trace (name <> ": " <> showX (d', v', r')) (d, v, r)
 
 ramDF :: forall dom n a
        . HasCallStack
-      => HiddenClockResetEnable dom
+      => KnownDomain dom
       => KnownNat n
       => NFDataX a
-      => Vec (2 ^ n) a
+      => Clock dom
+      -> Reset dom
+      -> Enable dom
+      -> Vec (2 ^ n) a
       -> DataFlow dom (Bool, Bool) Bool ((Unsigned n, a), Unsigned n) a
-ramDF mem = DF $ \(unbundle -> (iwadrdat, iradr)) (unbundle -> (iwvld, irvld)) orrdy ->
-    let ordat = readNew (blockRamPow2 mem) iradr $ ($>) <$> (guard <$> iwvld) <*> iwadrdat
-        orvld = register False irvld
-        iwrdy = pure True
-        irrdy = orrdy
-    in  (ordat, orvld, bundle (iwrdy, irrdy))
+ramDF clk rst ena mem =
+    DF $ \(unbundle -> (iwadrdat, iradr)) (unbundle -> (iwvld, irvld)) orrdy ->
+        let ordat =
+                    readNew clk rst ena (blockRamPow2 clk ena mem) iradr
+                        $   ($>)
+                        <$> (guard <$> iwvld)
+                        <*> iwadrdat
+            orvld = register clk rst ena False irvld
+            iwrdy = pure True
+            irrdy = orrdy
+        in  (ordat, orvld, bundle (iwrdy, irrdy))
 
 $(singletons [d| data QueueMode = None | Mono | Multi |])
 
 queueDF :: forall dom mode a
          . HasCallStack
-        => HiddenClockResetEnable dom
-        => NFDataX a => SQueueMode mode -> DataFlow dom Bool Bool a a
-queueDF mode = case mode of
+        => KnownDomain dom
+        => NFDataX a
+        => Clock dom
+        -> Reset dom
+        -> Enable dom
+        -> SQueueMode mode
+        -> DataFlow dom Bool Bool a a
+queueDF clk rst ena mode = case mode of
     SNone -> idDF
 
     SMono -> DF $ \idat ivld ordy ->
         let put  = not <$> busy .&&. ivld
             get  = busy .&&. ordy
-            busy = register False $ mux busy (not <$> get) put
-            temp = regEn undefined put idat
+            busy = register clk rst ena False $ mux busy (not <$> get) put
+            temp = regEn clk rst ena undefined put idat
         in  (temp, busy, not <$> busy)
 
     SMulti -> DF $ \idat ivld ordy ->
@@ -330,9 +361,9 @@ queueDF mode = case mode of
             put1  = busy0 .&&. ivld .&&. not <$> ordy
             get0  = not <$> busy1 .&&. ordy .&&. not <$> ivld
             get1  = not <$> busy0 .||. ordy
-            busy0 = register False $ mux busy0 (not <$> get0) put0
-            busy1 = register False $ mux busy1 (not <$> get1) put1
-            temp0 = regEn undefined put0 (mux get1 temp1 idat)
-            temp1 = regEn undefined put1 idat
+            busy0 = register clk rst ena False $ mux busy0 (not <$> get0) put0
+            busy1 = register clk rst ena False $ mux busy1 (not <$> get1) put1
+            temp0 = regEn clk rst ena undefined put0 (mux get1 temp1 idat)
+            temp1 = regEn clk rst ena undefined put1 idat
         in  (temp0, busy0, not <$> busy1)
 

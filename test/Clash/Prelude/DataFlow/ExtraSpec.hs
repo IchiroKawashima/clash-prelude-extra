@@ -99,7 +99,11 @@ spec = do
                     $ L.head
                     $ L.dropWhile (not . snd3)
                     $ simulateB @System
-                          (uncurry3 $ df $ decompressDF repeater `seqDF` compressDF counter)
+                          (       uncurry3
+                          $       df
+                          $       hideClockResetEnable decompressDF repeater
+                          `seqDF` hideClockResetEnable compressDF   counter
+                          )
                     $ L.repeat (d, True, True)
 
         it "reconstruct given data" $ do
@@ -129,7 +133,8 @@ spec = do
 
         it "collects given data with prioritising Left side when there is a branch" $ do
 
-            let target' = (\(d, v, r) -> (maybeHasX d, v, r)) . target @(Int, Int) @(Either Int Int)
+            let target' =
+                    (\(d, v, r) -> (maybeHasX d, v, r)) . target @(Int, Int) @(Either Int Int)
 
             target' ((undefined, undefined), (False, False), False)
                 `shouldBe` (Nothing, False, (False, False))
@@ -137,16 +142,14 @@ spec = do
                 `shouldBe` (Just (Right 3), True, (False, False))
             target' ((5, undefined), (True, False), False)
                 `shouldBe` (Just (Left 5), True, (False, False))
-            target' ((7, 11), (True, True), False)
-                `shouldBe` (Just (Left 7), True, (False, False))
+            target' ((7, 11), (True, True), False) `shouldBe` (Just (Left 7), True, (False, False))
             target' ((undefined, undefined), (False, False), True)
                 `shouldBe` (Nothing, False, (True, False))
             target' ((undefined, 13), (False, True), True)
                 `shouldBe` (Just (Right 13), True, (False, True))
             target' ((17, undefined), (True, False), True)
                 `shouldBe` (Just (Left 17), True, (True, False))
-            target' ((19, 23), (True, True), True)
-                `shouldBe` (Just (Left 19), True, (True, False))
+            target' ((19, 23), (True, True), True) `shouldBe` (Just (Left 19), True, (True, False))
 
     describe "stepSelect" $ do
 

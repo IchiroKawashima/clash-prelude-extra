@@ -1,7 +1,11 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Data.Constraint.Nat.Extra where
+module Data.Constraint.Nat.Extra
+    ( subMonotone1
+    , subMonotone2
+    )
+where
 
 import           Data.Constraint
 import           GHC.TypeLits

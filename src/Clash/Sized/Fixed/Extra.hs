@@ -32,3 +32,9 @@ negative :: forall int frac
          => SFixed (1 + int) frac
          -> UFixed int frac
 negative = positive . negate
+
+boundF :: forall rep int1 frac1 int2 frac2
+        . ResizeFC rep int1 frac1 int2 frac2
+       => ResizeFC rep int2 frac2 int1 frac1 => Fixed rep int1 frac1 -> Fixed rep int2 frac2
+boundF = resizeF . max (resizeF $ minBound @(Fixed rep int2 frac2)) . min
+    (resizeF $ maxBound @(Fixed rep int2 frac2))

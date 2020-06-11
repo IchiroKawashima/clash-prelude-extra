@@ -14,6 +14,7 @@ import           Clash.Prelude.DataFlow.Extra  as Exports
                                                 , selDF
                                                 , leftDF
                                                 , rightDF
+                                                , justDF
                                                 , flipDF
                                                 , parDF'
                                                 , firstDF'

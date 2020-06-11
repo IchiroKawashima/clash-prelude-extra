@@ -258,6 +258,9 @@ rightDF :: forall dom a b c
         -> DataFlow dom Bool Bool (Either c a) (Either c b)
 rightDF g = idDF `selDF` g
 
+justDF :: forall dom a b . DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (Maybe a) (Maybe b)
+justDF f = pureDF (maybeToEither ()) `seqDF` rightDF f `seqDF` pureDF eitherToMaybe
+
 flipDF :: forall dom a b . DataFlow dom Bool Bool (Either a b) (Either b a)
 flipDF = DF $ \idat ivld ordy -> (flipEither <$> idat, ivld, ordy)
   where

@@ -273,11 +273,11 @@ parDF' :: forall dom a b c d
        -> DataFlow dom Bool Bool (a, c) (b, d)
 f `parDF'` g = stepLock `seqDF` (f `parDF` g) `seqDF` lockStep
 
-firstDF' :: forall dom a b c . DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (c, a) (c, b)
-firstDF' f = idDF `parDF'` f
+firstDF' :: forall dom a b c . DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (a, c) (b, c)
+firstDF' f = f `parDF'` idDF
 
-secondDF' :: forall dom a b c . DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (a, c) (b, c)
-secondDF' g = g `parDF'` idDF
+secondDF' :: forall dom a b c . DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (c, a) (c, b)
+secondDF' g = idDF `parDF'` g
 
 swapDF' :: forall dom a b . DataFlow dom Bool Bool (a, b) (b, a)
 swapDF' = DF $ \idat ivld ordy -> (swapTuple <$> idat, ivld, ordy)

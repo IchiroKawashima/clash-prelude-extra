@@ -353,20 +353,23 @@ queueDF clk rst ena mode = case mode of
     SNone -> idDF
 
     SMono -> DF $ \idat ivld ordy ->
-        let put  = not <$> busy .&&. ivld
-            get  = busy .&&. ordy
-            busy = register clk rst ena False $ mux busy (not <$> get) put
-            temp = regEn clk rst ena undefined put idat
+        let lock = not <$> busy .&&. ivld
+            free = busy .&&. ordy
+            busy = register clk rst ena False $ mux busy (not <$> free) lock
+            temp = regEn clk rst ena undefined lock idat
         in  (temp, busy, not <$> busy)
 
     SMulti -> DF $ \idat ivld ordy ->
-        let put0  = busy1 .||. ivld
-            put1  = busy0 .&&. ivld .&&. not <$> ordy
-            get0  = not <$> busy1 .&&. ordy .&&. not <$> ivld
-            get1  = not <$> busy0 .||. ordy
-            busy0 = register clk rst ena False $ mux busy0 (not <$> get0) put0
-            busy1 = register clk rst ena False $ mux busy1 (not <$> get1) put1
-            temp0 = regEn clk rst ena undefined put0 (mux get1 temp1 idat)
-            temp1 = regEn clk rst ena undefined put1 idat
-        in  (temp0, busy0, not <$> busy1)
+        let
+            lock0 = ivld .||. busy1
+            lock1 = ivld .&&. not <$> ordy .&&. busy0
+            free0 = ordy .&&. not <$> ivld .&&. not <$> busy1
+            free1 = ordy .||. not <$> busy0
+            busy0 = register clk rst ena False $ mux busy0 (not <$> free0) lock0
+            busy1 = register clk rst ena False $ mux busy1 (not <$> free1) lock1
+            temp0 = regEn clk rst ena undefined (lock0 .&&. (not <$> busy0 .||. ordy))
+                $ mux busy1 temp1 idat
+            temp1 = regEn clk rst ena undefined (lock1 .&&. (not <$> busy1 .&&. ivld)) idat
+        in
+            (temp0, busy0, not <$> busy1)
 

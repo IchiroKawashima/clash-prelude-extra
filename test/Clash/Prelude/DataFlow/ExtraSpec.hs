@@ -12,12 +12,13 @@ import           Data.Tuple.Extra
 
 import           Clash.Prelude.DataFlow.Extra
 
-df2f :: forall i o iEn oEn
-      . (NFDataX i, NFDataX iEn, NFDataX oEn, NFDataX o)
-     => DataFlow System iEn oEn i o
-     -> (i, iEn, oEn)
-     -> (o, oEn, iEn)
-df2f f = L.head . simulateB @System (uncurry3 $ df f) . (: [])
+df2f :: forall dom i o iEn oEn
+      . KnownDomain dom
+     => NFDataX i
+     => NFDataX iEn
+     => NFDataX oEn
+     => NFDataX o => DataFlow dom iEn oEn i o -> (i, iEn, oEn) -> (o, oEn, iEn)
+df2f f = L.head . simulateB (uncurry3 $ df f) . (: [])
 
 spec :: Spec
 spec = do
@@ -115,10 +116,10 @@ spec = do
     describe "selectStep" $ do
 
         let target :: forall i o iEn
-                    . (NFDataX i, NFDataX o, NFDataX iEn, SelectStep iEn i o)
-                   => (i, iEn, Bool)
-                   -> (o, Bool, iEn)
-            target = df2f selectStep
+                    . NFDataX i
+                   => NFDataX o
+                   => NFDataX iEn => SelectStep iEn i o => (i, iEn, Bool) -> (o, Bool, iEn)
+            target = df2f @System selectStep
 
 
         it "behaves as idDF when there is no branch" $ do
@@ -154,10 +155,10 @@ spec = do
     describe "stepSelect" $ do
 
         let target :: forall i o oEn
-                    . (NFDataX i, NFDataX o, NFDataX oEn, SelectStep oEn o i)
-                   => (i, Bool, oEn)
-                   -> (o, oEn, Bool)
-            target = df2f stepSelect
+                    . NFDataX i
+                   => NFDataX o
+                   => NFDataX oEn => SelectStep oEn o i => (i, Bool, oEn) -> (o, oEn, Bool)
+            target = df2f @System stepSelect
 
         it "behaves as idDF when there is no branch" $ do
 
@@ -210,3 +211,138 @@ spec = do
                     $ L.repeat (d, True, (True, True))
 
         it "source does not emit any data" $ target 3 `shouldBe` (Nothing, 3)
+
+    describe "queueDF" $ do
+
+        let target :: forall mode
+                    . SQueueMode mode
+                   -> [(Int, Bool, Bool)]
+                   -> [(Maybe Int, Bool, Bool)]
+            target mode is =
+                L.take (L.length is)
+                    . L.map (\(d, v, r) -> (maybeIsX d, v, r))
+                    . simulateB @System (uncurry3 $ df $ hideClockResetEnable queueDF mode)
+                    $ is
+
+        it "behaves as idDF in SNone mode" $ do
+
+            --test patterns
+            --valid,ready
+            --00
+            --01
+            --10
+            --11
+
+            let i =
+                    [ (undefined, False, False)
+                    , (undefined, False, True)
+                    , (2        , True , False)
+                    , (3        , True , True)
+                    ]
+
+                o =
+                    [ (Nothing, False, False)
+                    , (Nothing, False, True)
+                    , (Just 2 , True , False)
+                    , (Just 3 , True , True)
+                    ]
+
+            target SNone i `shouldBe` o
+
+        it "passes data intermittently in SMono mode" $ do
+
+            --test patterns
+            --state,valid,ready
+            --000
+            --001
+            --010
+            --100
+            --101
+            --011
+            --110
+            --111
+            --000
+
+            let i =
+                    [ (undefined, False, False)
+                    , (undefined, False, True)
+                    , (2        , True , False)
+                    , (undefined, False, False)
+                    , (undefined, False, True)
+                    , (3        , True , True)
+                    , (5        , True , False)
+                    , (7        , True , True)
+                    , (undefined, False, False)
+                    ]
+
+                o =
+                    [ (Nothing, False, True)
+                    , (Nothing, False, True)
+                    , (Nothing, False, True)
+                    , (Just 2 , True , False)
+                    , (Just 2 , True , False)
+                    , (Just 2 , False, True)
+                    , (Just 3 , True , False)
+                    , (Just 3 , True , False)
+                    , (Just 3 , False, True)
+                    ]
+
+            target SMono i `shouldBe` o
+
+        it "passes data continuously in SMulti mode" $ do
+
+            --test patterns
+            --state,valid,ready, ,data
+            --000 xx
+            --001 xx
+            --010 xx
+            --100 2x
+            --110 2x
+            --200 23
+            --210 23
+            --201 23
+            --101 3x
+            --011 xx
+            --111 7x
+            --110 9x
+            --211 91
+            --101 1x
+            --000 xx
+
+            let i =
+                    [ (undefined, False, False)
+                    , (undefined, False, True)
+                    , (2        , True , False)
+                    , (undefined, False, False)
+                    , (3        , True , False)
+                    , (undefined, False, False)
+                    , (5        , True , False)
+                    , (undefined, False, True)
+                    , (undefined, False, True)
+                    , (7        , True , True)
+                    , (9        , True , True)
+                    , (11       , True , False)
+                    , (13       , True , True)
+                    , (undefined, False, True)
+                    , (undefined, False, False)
+                    ]
+
+                o =
+                    [ (Nothing, False, True)
+                    , (Nothing, False, True)
+                    , (Nothing, False, True)
+                    , (Just 2 , True , True)
+                    , (Just 2 , True , True)
+                    , (Just 2 , True , False)
+                    , (Just 2 , True , False)
+                    , (Just 2 , True , False)
+                    , (Just 3 , True , True)
+                    , (Just 3 , False, True)
+                    , (Just 7 , True , True)
+                    , (Just 9 , True , True)
+                    , (Just 9 , True , False)
+                    , (Just 11, True , True)
+                    , (Just 11, False, True)
+                    ]
+
+            target SMulti i `shouldBe` o

@@ -95,17 +95,14 @@ spec = do
     describe "decompressDF & compressDF" $ do
 
         let target :: (Int, Int) -> (Int, Int)
-            target d =
-                fst3
-                    $ L.head
-                    $ L.dropWhile (not . snd3)
-                    $ simulateB @System
-                          (       uncurry3
-                          $       df
-                          $       hideClockResetEnable decompressDF repeater
+            target =
+                fst
+                    . L.head
+                    . simulateDF @System
+                          (       hideClockResetEnable decompressDF repeater
                           `seqDF` hideClockResetEnable compressDF   counter
                           )
-                    $ L.repeat (d, True, True)
+                    . L.replicate 1
 
         it "reconstruct given data" $ do
 
@@ -203,7 +200,7 @@ spec = do
 
         let target :: Int -> (Maybe Int, Int)
             target d =
-                (\(b, a) -> (maybeIsX b, a))
+                first maybeIsX
                     $ fst3
                     $ L.head
                     $ L.dropWhile (not . snd . snd3)

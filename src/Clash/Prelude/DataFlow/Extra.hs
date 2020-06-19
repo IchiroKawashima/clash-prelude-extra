@@ -378,23 +378,25 @@ queueDF clk rst ena mode = case mode of
 simulateDF :: forall dom a b
             . KnownDomain dom
            => NFDataX a
+           => Show a
            => NFDataX b
            => (HiddenClockResetEnable dom => DataFlow dom Bool Bool a b)
            -> [a]
-           -> [(Int, b)]
-simulateDF f x = L.zip (L.last $ sampleN len vsig) (L.last $ sampleN len osig)
+           -> [(b, Int)]
+simulateDF f x@(L.length -> n) = (sample osig L.!! done)
   where
-    clk = clockGen
-    rst = resetGen
-    ena = enableGen
-    cnt = register clk rst ena 0 $ succ <$> cnt
+    clk                = clockGen
+    rst                = resetGen
+    ena                = enableGen
+    cnt                = register clk rst ena 0 $ succ <$> cnt
 
-    (odat, ovld, irdy) =
-        df (withClockResetEnable clk rst ena f) (L.head <$> isig) (pure True) (pure True)
+    (odat, ovld, irdy) = df (withClockResetEnable clk rst ena f) idat ivld ordy
 
-    isig = regEn clk rst ena x irdy $ L.tail <$> isig
-    osig = regEn clk rst ena [] ovld $ L.snoc <$> osig <*> odat
-    vsig = register clk rst ena [] $ mux ovld (L.snoc <$> vsig <*> cnt) vsig
+    idat               = mux ivld (L.head <$> isig) $ pure undefined
+    ivld               = (/= 0) . L.length <$> isig
+    ordy               = (/= n) . L.length <$> osig
 
-    hits = regEn clk rst ena 0 ovld $ succ <$> hits
-    len  = succ $ L.length $ L.takeWhile (< L.length x) $ sample hits
+    isig               = regEn clk rst ena x (ivld .&&. irdy) $ L.tail <$> isig
+    osig = regEn clk rst ena [] (ovld .&&. ordy) $ L.snoc <$> osig <*> bundle (odat, cnt)
+
+    done               = L.head . L.findIndices ((== n) . L.length) $ sample osig

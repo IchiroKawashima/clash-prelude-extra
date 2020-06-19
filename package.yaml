@@ -16,8 +16,6 @@ dependencies:
 - ghc-typelits-extra
 - ghc-typelits-knownnat
 - ghc-typelits-natnormalise
-- clash-ghc
-- clash-lib
 - clash-prelude
 - singletons
 - constraints

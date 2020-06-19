@@ -26,6 +26,7 @@ import           Clash.Prelude.DataFlow.Extra  as Exports
                                                 , ramDF
                                                 , SQueueMode(..)
                                                 , queueDF
+                                                , simulateDF
                                                 )
 import           Clash.Sized.Index.Extra       as Exports
                                                 ( i2bv )

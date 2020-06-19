@@ -7,6 +7,9 @@
 
 module Clash.Prelude.DataFlow.Extra where
 
+import           Clash.Prelude                  ( HiddenClockResetEnable
+                                                , withClockResetEnable
+                                                )
 import           Clash.Explicit.Prelude
 import           Clash.Signal.Internal          ( Signal((:-)) )
 import           Control.Monad                  ( guard )
@@ -17,6 +20,8 @@ import           Data.Singletons
 import           Data.Singletons.TH      hiding ( type (<=) )
 import           Data.Constraint         hiding ( (&&&) )
 import           Data.Constraint.Nat
+import qualified Data.List                     as L
+import qualified Data.List.Extra               as L
 import           Data.Maybe
 import           Data.Tuple.Extra
 import           Data.Either.Extra
@@ -369,3 +374,27 @@ queueDF clk rst ena mode = case mode of
             temp0 = regEn clk rst ena undefined (lock0 .&&. free1) $ mux busy1 temp1 idat
             temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) idat
         in  (temp0, busy0, not <$> busy1)
+
+simulateDF :: forall dom a b
+            . KnownDomain dom
+           => NFDataX a
+           => NFDataX b
+           => (HiddenClockResetEnable dom => DataFlow dom Bool Bool a b)
+           -> [a]
+           -> [(Int, b)]
+simulateDF f x = L.zip (L.last $ sampleN len vsig) (L.last $ sampleN len osig)
+  where
+    clk = clockGen
+    rst = resetGen
+    ena = enableGen
+    cnt = register clk rst ena 0 $ succ <$> cnt
+
+    (odat, ovld, irdy) =
+        df (withClockResetEnable clk rst ena f) (L.head <$> isig) (pure True) (pure True)
+
+    isig = regEn clk rst ena x irdy $ L.tail <$> isig
+    osig = regEn clk rst ena [] ovld $ L.snoc <$> osig <*> odat
+    vsig = register clk rst ena [] $ mux ovld (L.snoc <$> vsig <*> cnt) vsig
+
+    hits = regEn clk rst ena 0 ovld $ succ <$> hits
+    len  = succ $ L.length $ L.takeWhile (< L.length x) $ sample hits

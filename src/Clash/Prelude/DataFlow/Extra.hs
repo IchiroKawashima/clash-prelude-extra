@@ -360,16 +360,12 @@ queueDF clk rst ena mode = case mode of
         in  (temp, busy, not <$> busy)
 
     SMulti -> DF $ \idat ivld ordy ->
-        let
-            lock0 = ivld .||. busy1
+        let lock0 = ivld .||. busy1
             lock1 = ivld .&&. not <$> ordy .&&. busy0
             free0 = ordy .&&. not <$> ivld .&&. not <$> busy1
             free1 = ordy .||. not <$> busy0
             busy0 = register clk rst ena False $ mux busy0 (not <$> free0) lock0
             busy1 = register clk rst ena False $ mux busy1 (not <$> free1) lock1
-            temp0 = regEn clk rst ena undefined (lock0 .&&. (not <$> busy0 .||. ordy))
-                $ mux busy1 temp1 idat
-            temp1 = regEn clk rst ena undefined (lock1 .&&. (not <$> busy1 .&&. ivld)) idat
-        in
-            (temp0, busy0, not <$> busy1)
-
+            temp0 = regEn clk rst ena undefined (lock0 .&&. free1) $ mux busy1 temp1 idat
+            temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) idat
+        in  (temp0, busy0, not <$> busy1)

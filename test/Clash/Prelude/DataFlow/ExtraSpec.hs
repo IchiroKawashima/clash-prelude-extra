@@ -17,8 +17,8 @@ df2f :: forall dom i o iEn oEn
      => NFDataX i
      => NFDataX iEn
      => NFDataX oEn
-     => NFDataX o => DataFlow dom iEn oEn i o -> (i, iEn, oEn) -> (o, oEn, iEn)
-df2f f = L.head . simulateB (uncurry3 $ df f) . (: [])
+     => NFDataX o => DataFlow dom iEn oEn i o -> [(i, iEn, oEn)] -> [(o, oEn, iEn)]
+df2f f l = L.take (L.length l) . simulateB (uncurry3 $ df f) $ l
 
 spec :: Spec
 spec = do
@@ -115,86 +115,89 @@ spec = do
         let target :: forall i o iEn
                     . NFDataX i
                    => NFDataX o
-                   => NFDataX iEn => SelectStep iEn i o => (i, iEn, Bool) -> (o, Bool, iEn)
+                   => NFDataX iEn
+                   => SelectStep iEn i o => [(i, iEn, Bool)] -> [(o, Bool, iEn)]
             target = df2f @System selectStep
-
 
         it "behaves as idDF when there is no branch" $ do
 
-            let target' = (\(d, v, r) -> (maybeIsX d, v, r)) . target @Int @Int
+            let target' = L.map (\(d, v, r) -> (maybeIsX d, v, r)) . target @Int @Int
 
-            target' (undefined, False, False) `shouldBe` (Nothing, False, False)
-            target' (undefined, False, True) `shouldBe` (Nothing, False, True)
-            target' (3, True, False) `shouldBe` (Just 3, True, False)
-            target' (5, True, True) `shouldBe` (Just 5, True, True)
+            target' [(undefined, False, False)] `shouldBe` [(Nothing, False, False)]
+            target' [(undefined, False, True)] `shouldBe` [(Nothing, False, True)]
+            target' [(3, True, False)] `shouldBe` [(Just 3, True, False)]
+            target' [(5, True, True)] `shouldBe` [(Just 5, True, True)]
 
 
         it "collects given data with prioritising Left side when there is a branch" $ do
 
             let target' =
-                    (\(d, v, r) -> (maybeHasX d, v, r)) . target @(Int, Int) @(Either Int Int)
+                    L.map (\(d, v, r) -> (maybeHasX d, v, r)) . target @(Int, Int) @(Either Int Int)
 
-            target' ((undefined, undefined), (False, False), False)
-                `shouldBe` (Nothing, False, (False, False))
-            target' ((undefined, 3), (False, True), False)
-                `shouldBe` (Just (Right 3), True, (False, False))
-            target' ((5, undefined), (True, False), False)
-                `shouldBe` (Just (Left 5), True, (False, False))
-            target' ((7, 11), (True, True), False) `shouldBe` (Just (Left 7), True, (False, False))
-            target' ((undefined, undefined), (False, False), True)
-                `shouldBe` (Nothing, False, (True, False))
-            target' ((undefined, 13), (False, True), True)
-                `shouldBe` (Just (Right 13), True, (False, True))
-            target' ((17, undefined), (True, False), True)
-                `shouldBe` (Just (Left 17), True, (True, False))
-            target' ((19, 23), (True, True), True) `shouldBe` (Just (Left 19), True, (True, False))
+            target' [((undefined, undefined), (False, False), False)]
+                `shouldBe` [(Nothing, False, (False, False))]
+            target' [((undefined, 3), (False, True), False)]
+                `shouldBe` [(Just (Right 3), True, (False, False))]
+            target' [((5, undefined), (True, False), False)]
+                `shouldBe` [(Just (Left 5), True, (False, False))]
+            target' [((7, 11), (True, True), False)]
+                `shouldBe` [(Just (Left 7), True, (False, False))]
+            target' [((undefined, undefined), (False, False), True)]
+                `shouldBe` [(Nothing, False, (True, False))]
+            target' [((undefined, 13), (False, True), True)]
+                `shouldBe` [(Just (Right 13), True, (False, True))]
+            target' [((17, undefined), (True, False), True)]
+                `shouldBe` [(Just (Left 17), True, (True, False))]
+            target' [((19, 23), (True, True), True)]
+                `shouldBe` [(Just (Left 19), True, (True, False))]
 
     describe "stepSelect" $ do
 
         let target :: forall i o oEn
                     . NFDataX i
                    => NFDataX o
-                   => NFDataX oEn => SelectStep oEn o i => (i, Bool, oEn) -> (o, oEn, Bool)
+                   => NFDataX oEn
+                   => SelectStep oEn o i => [(i, Bool, oEn)] -> [(o, oEn, Bool)]
             target = df2f @System stepSelect
 
         it "behaves as idDF when there is no branch" $ do
 
-            let target' = (\(d, v, r) -> (maybeIsX d, v, r)) . target @Int @Int
+            let target' = L.map (\(d, v, r) -> (maybeIsX d, v, r)) . target @Int @Int
 
-            target' (undefined, False, False) `shouldBe` (Nothing, False, False)
-            target' (undefined, False, True) `shouldBe` (Nothing, False, True)
-            target' (3, True, False) `shouldBe` (Just 3, True, False)
-            target' (5, True, True) `shouldBe` (Just 5, True, True)
+            target' [(undefined, False, False)] `shouldBe` [(Nothing, False, False)]
+            target' [(undefined, False, True)] `shouldBe` [(Nothing, False, True)]
+            target' [(3, True, False)] `shouldBe` [(Just 3, True, False)]
+            target' [(5, True, True)] `shouldBe` [(Just 5, True, True)]
 
         it "distributes given data" $ do
             let target' =
-                    (\((dl, dr), v, r) -> ((maybeIsX dl, maybeIsX dr), v, r))
+                    L.map (\((dl, dr), v, r) -> ((maybeIsX dl, maybeIsX dr), v, r))
                         . target @(Either Int Int) @(Int, Int)
 
-            target' (undefined, False, (False, False))
-                `shouldBe` ((Nothing, Nothing), (False, False), False)
-            target' (undefined, False, (False, True))
-                `shouldBe` ((Nothing, Nothing), (False, False), False)
-            target' (undefined, False, (True, False))
-                `shouldBe` ((Nothing, Nothing), (False, False), True)
-            target' (undefined, False, (True, True))
-                `shouldBe` ((Nothing, Nothing), (False, False), True)
-            target' (Left 3, True, (False, False))
-                `shouldBe` ((Just 3, Nothing), (True, False), False)
-            target' (Right 5, True, (False, False))
-                `shouldBe` ((Nothing, Just 5), (False, True), False)
-            target' (Left 7, True, (False, True))
-                `shouldBe` ((Just 7, Nothing), (True, False), False)
-            target' (Right 11, True, (False, True))
-                `shouldBe` ((Nothing, Just 11), (False, True), True)
-            target' (Left 13, True, (True, False))
-                `shouldBe` ((Just 13, Nothing), (True, False), True)
-            target' (Right 17, True, (True, False))
-                `shouldBe` ((Nothing, Just 17), (False, True), False)
-            target' (Left 19, True, (True, True))
-                `shouldBe` ((Just 19, Nothing), (True, False), True)
-            target' (Right 23, True, (True, True))
-                `shouldBe` ((Nothing, Just 23), (False, True), True)
+            target' [(undefined, False, (False, False))]
+                `shouldBe` [((Nothing, Nothing), (False, False), False)]
+            target' [(undefined, False, (False, True))]
+                `shouldBe` [((Nothing, Nothing), (False, False), False)]
+            target' [(undefined, False, (True, False))]
+                `shouldBe` [((Nothing, Nothing), (False, False), True)]
+            target' [(undefined, False, (True, True))]
+                `shouldBe` [((Nothing, Nothing), (False, False), True)]
+            target' [(Left 3, True, (False, False))]
+                `shouldBe` [((Just 3, Nothing), (True, False), False)]
+            target' [(Right 5, True, (False, False))]
+                `shouldBe` [((Nothing, Just 5), (False, True), False)]
+            target' [(Left 7, True, (False, True))]
+                `shouldBe` [((Just 7, Nothing), (True, False), False)]
+            target' [(Right 11, True, (False, True))]
+                `shouldBe` [((Nothing, Just 11), (False, True), True)]
+            target' [(Left 13, True, (True, False))]
+                `shouldBe` [((Just 13, Nothing), (True, False), True)]
+            target' [(Right 17, True, (True, False))]
+                `shouldBe` [((Nothing, Just 17), (False, True), False)]
+            target' [(Left 19, True, (True, True))]
+                `shouldBe` [((Just 19, Nothing), (True, False), True)]
+            target' [(Right 23, True, (True, True))]
+                `shouldBe` [((Nothing, Just 23), (False, True), True)]
 
     describe "sourceDF" $ do
 

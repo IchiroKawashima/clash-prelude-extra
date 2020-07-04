@@ -330,18 +330,23 @@ ramDF :: forall dom n a
       -> Reset dom
       -> Enable dom
       -> Vec (2 ^ n) a
-      -> DataFlow dom (Bool, Bool) Bool ((Unsigned n, a), Unsigned n) a
-ramDF clk rst ena mem =
-    DF $ \(unbundle -> (iwadrdat, iradr)) (unbundle -> (iwvld, irvld)) orrdy ->
-        let ordat =
-                    readNew clk rst ena (blockRamPow2 clk ena mem) iradr
-                        $   ($>)
-                        <$> (guard <$> iwvld)
-                        <*> iwadrdat
-            orvld = register clk rst ena False irvld
-            iwrdy = pure True
-            irrdy = orrdy
-        in  (ordat, orvld, bundle (iwrdy, irrdy))
+      -> Signal dom (Maybe (Unsigned n, a))
+      -> DataFlow dom Bool Bool (Unsigned n) a
+ramDF clk rst ena mem iwadrdat = DF $ \iradr irvld orrdy ->
+    let
+        lock0 = irvld .||. busy1
+        lock1 = irvld .&&. not <$> orrdy .&&. busy0
+        free0 = orrdy .&&. not <$> irvld .&&. not <$> busy1
+        free1 = orrdy .||. not <$> busy0
+        busy0 = register clk rst ena False $ mux busy0 (not <$> free0) lock0
+        busy1 = register clk rst ena False $ mux busy1 (not <$> free1) lock1
+        temp0 =
+            mux (lock0 .&&. free1) (mux busy1 temp1 iradr) $ register clk rst ena undefined temp0
+        temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) iradr
+
+        ordat = readNew clk rst ena (blockRamPow2 clk ena mem) temp0 iwadrdat
+    in
+        (ordat, busy0, not <$> busy1)
 
 $(singletons [d| data QueueMode = None | Mono | Multi |])
 

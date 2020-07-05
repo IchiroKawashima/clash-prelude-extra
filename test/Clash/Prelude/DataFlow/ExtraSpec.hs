@@ -230,39 +230,39 @@ spec = do
         it "outputs stored data with updating with new input" $ do
 
             let i =
-                    [ (Just (0, 20), (undefined ,False, False))
-                    , (Just (0, 21), (undefined ,False, True))
-                    , (Just (0, 22), (0         ,True , False)) --
-                    , (Just (0, 23), (undefined ,False, False))
-                    , (Just (1, 24), (1         ,True , False))
-                    , (Just (1, 25), (undefined ,False, False)) --
-                    , (Just (1, 26), (2         ,True , False))
-                    , (Just (1, 27), (undefined ,False, True))
-                    , (Just (1, 28), (undefined ,False, True)) --
-                    , (Just (2, 29), (3         ,True , True))
-                    , (Just (2, 30), (4         ,True , True))
-                    , (Just (2, 31), (5         ,True , False)) --
-                    , (Just (2, 32), (6         ,True , True))
-                    , (Just (2, 33), (undefined ,False, True))
-                    , (Just (2, 34), (undefined ,False, False)) --
+                    [ (Just (0, 20), (undefined, False, False))
+                    , (Just (0, 21), (undefined, False, True))
+                    , (Just (0, 22), (0, True, False))
+                    , (Just (0, 23), (undefined, False, False))
+                    , (Just (1, 24), (1, True, False))
+                    , (Just (1, 25), (undefined, False, False))
+                    , (Just (1, 26), (2, True, False))
+                    , (Just (1, 27), (undefined, False, True))
+                    , (Just (1, 28), (undefined, False, True))
+                    , (Just (2, 29), (3, True, True))
+                    , (Just (2, 30), (4, True, True))
+                    , (Just (2, 31), (5, True, False))
+                    , (Just (2, 32), (6, True, True))
+                    , (Just (2, 33), (undefined, False, True))
+                    , (Just (2, 34), (undefined, False, False))
                     ]
 
                 o =
                     [ (Nothing, False, True)
                     , (Nothing, False, True)
-                    , (Nothing, False, True) --
-                    , (Just 20 , True , True)
-                    , (Just 20 , True , True)
-                    , (Just 20 , True , False) --
-                    , (Just 20 , True , False)
-                    , (Just 20 , True , False)
-                    , (Just 3 , True , True) --
-                    , (Just 3 , False, True)
+                    , (Nothing, False, True)
+                    , (Just 22, True , True)
+                    , (Just 23, True , True)
+                    , (Just 23, True , False)
+                    , (Just 23, True , False)
+                    , (Just 23, True , False)
+                    , (Just 27, True , True)
+                    , (Just 28, False, True)
                     , (Just 7 , True , True)
-                    , (Just 11, True , True) --
+                    , (Just 11, True , True)
                     , (Just 11, True , False)
                     , (Just 13, True , True)
-                    , (Just 13, False, True) --
+                    , (Just 13, False, True)
                     ]
 
             target i `shouldBe` o

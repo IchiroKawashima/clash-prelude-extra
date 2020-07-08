@@ -26,6 +26,9 @@ import           Clash.Prelude.DataFlow.Extra  as Exports
                                                 , leftDF'
                                                 , rightDF'
                                                 , justDF'
+                                                , parDF'
+                                                , firstDF'
+                                                , secondDF'
                                                 , simulateDF
                                                 )
 import           Clash.Sized.Index.Extra       as Exports

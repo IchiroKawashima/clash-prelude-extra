@@ -405,6 +405,32 @@ justDF' :: forall dom a b
         -> DataFlow dom Bool Bool (Maybe a) (Maybe b)
 justDF' f = pureDF (maybeToEither ()) `seqDF` rightDF' f `seqDF` pureDF eitherToMaybe
 
+parDF' :: forall dom a b c d
+        . HiddenClockResetEnable dom
+       => NFDataX b
+       => NFDataX d
+       => DataFlow dom Bool Bool a b
+       -> DataFlow dom Bool Bool c d
+       -> DataFlow dom Bool Bool (a, c) (b, d)
+f `parDF'` g =
+    stepLock
+        `seqDF` (       (f `seqDF` hideClockResetEnable queueDF SMulti)
+                `parDF` (g `seqDF` hideClockResetEnable queueDF SMulti)
+                )
+        `seqDF` lockStep
+
+firstDF' :: forall dom a b c
+          . HiddenClockResetEnable dom
+         => NFDataX b
+         => NFDataX c => DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (a, c) (b, c)
+firstDF' f = f `parDF'` idDF
+
+secondDF' :: forall dom a b c
+           . HiddenClockResetEnable dom
+          => NFDataX b
+          => NFDataX c => DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (c, a) (c, b)
+secondDF' g = idDF `parDF'` g
+
 simulateDF :: forall dom a b
             . KnownDomain dom
            => NFDataX a

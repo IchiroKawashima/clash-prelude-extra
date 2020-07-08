@@ -1,4 +1,5 @@
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -9,6 +10,7 @@ module Clash.Prelude.DataFlow.Extra where
 
 import           Clash.Prelude                  ( HiddenClockResetEnable
                                                 , withClockResetEnable
+                                                , hideClockResetEnable
                                                 )
 import           Clash.Explicit.Prelude
 import           Clash.Signal.Internal          ( Signal((:-)) )
@@ -213,65 +215,6 @@ foldDF' Proxy f0 fn = DF $ go SNat
     go SNat _ _ _ = undefined
 {-# NOINLINE foldDF' #-}
 
-class SelectStep xEn x x' where
-    selectStep :: DataFlow dom xEn Bool x x'
-    stepSelect :: DataFlow dom Bool xEn x' x
-
-instance SelectStep Bool x x where
-    selectStep = idDF
-    stepSelect = idDF
-
-prior :: forall dom . Signal dom Bool
-prior = pure False
-
-instance (SelectStep xEn x x', SelectStep yEn y y') => SelectStep (xEn, yEn) (x, y) (Either x' y')
-  where
-    selectStep = (selectStep `parDF` selectStep) `seqDF` step
-      where
-        step = DF $ \(unbundle -> (idatA, idatB)) (unbundle -> (ivldA, ivldB)) ordyC ->
-            let sel   = not <$> ivldA .&&. (ivldB .||. prior)
-                ovldC = mux sel ivldB ivldA
-                irdyA = ordyC .&&. not <$> sel
-                irdyB = ordyC .&&. sel
-                odatC = mux sel (Right <$> idatB) (Left <$> idatA)
-            in  (odatC, ovldC, bundle (irdyA, irdyB))
-
-    stepSelect = step `seqDF` (stepSelect `parDF` stepSelect)
-      where
-        step = DF $ \idatA ivldA (unbundle -> (ordyB, ordyC)) ->
-            let sel   = mux ivldA (isRight <$> idatA) prior
-                ovldB = ivldA .&&. not <$> sel
-                ovldC = ivldA .&&. sel
-                irdyA = mux sel ordyC ordyB
-                odatB = fromLeft undefined <$> idatA
-                odatC = fromRight undefined <$> idatA
-            in  (bundle (odatB, odatC), bundle (ovldB, ovldC), irdyA)
-
-selDF :: forall dom a b c d
-       . DataFlow dom Bool Bool a b
-      -> DataFlow dom Bool Bool c d
-      -> DataFlow dom Bool Bool (Either a c) (Either b d)
-f `selDF` g = stepSelect `seqDF` (f `parDF` g) `seqDF` selectStep
-
-leftDF :: forall dom a b c
-        . DataFlow dom Bool Bool a b
-       -> DataFlow dom Bool Bool (Either a c) (Either b c)
-leftDF f = f `selDF` idDF
-
-rightDF :: forall dom a b c
-         . DataFlow dom Bool Bool a b
-        -> DataFlow dom Bool Bool (Either c a) (Either c b)
-rightDF g = idDF `selDF` g
-
-justDF :: forall dom a b . DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (Maybe a) (Maybe b)
-justDF f = pureDF (maybeToEither ()) `seqDF` rightDF f `seqDF` pureDF eitherToMaybe
-
-flipDF :: forall dom a b . DataFlow dom Bool Bool (Either a b) (Either b a)
-flipDF = DF $ \idat ivld ordy -> (flipEither <$> idat, ivld, ordy)
-  where
-    flipEither (Left  x) = Right x
-    flipEither (Right x) = Left x
-
 sourceDF :: forall dom en a b . DataFlow dom en (Bool, en) a (b, a)
 sourceDF =
     (DF $ \d v (unbundle -> (_, r)) -> (bundle (pure undefined, d), bundle (pure undefined, v), r))
@@ -354,15 +297,113 @@ queueDF clk rst ena mode = case mode of
         in  (temp, busy, not <$> busy)
 
     SMulti -> DF $ \idat ivld ordy ->
-        let lock0 = ivld .||. busy1
+        let
+            lock0 = ivld .||. busy1
             lock1 = ivld .&&. not <$> ordy .&&. busy0
             free0 = ordy .&&. not <$> ivld .&&. not <$> busy1
             free1 = ordy .||. not <$> busy0
             busy0 = register clk rst ena False $ mux busy0 (not <$> free0) lock0
             busy1 = register clk rst ena False $ mux busy1 (not <$> free1) lock1
-            temp0 = regEn clk rst ena undefined (lock0 .&&. free1) $ mux busy1 temp1 idat
+            temp0 = regEn clk rst ena undefined (lock0 .&&. (ordy .||. not <$> busy0))
+                $ mux busy1 temp1 idat
             temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) idat
-        in  (temp0, busy0, not <$> busy1)
+        in
+            (temp0, busy0, not <$> busy1)
+
+class SelectStep xEn x x' where
+    selectStep :: DataFlow dom xEn Bool x x'
+    stepSelect :: DataFlow dom Bool xEn x' x
+
+instance SelectStep Bool x x where
+    selectStep = idDF
+    stepSelect = idDF
+
+prior :: forall dom . Signal dom Bool
+prior = pure False
+
+instance (SelectStep xEn x x', SelectStep yEn y y') => SelectStep (xEn, yEn) (x, y) (Either x' y')
+  where
+    selectStep = (selectStep `parDF` selectStep) `seqDF` step
+      where
+        step = DF $ \(unbundle -> (idatA, idatB)) (unbundle -> (ivldA, ivldB)) ordyC ->
+            let sel   = not <$> ivldA .&&. (ivldB .||. prior)
+                ovldC = mux sel ivldB ivldA
+                irdyA = ordyC .&&. not <$> sel
+                irdyB = ordyC .&&. sel
+                odatC = mux sel (Right <$> idatB) (Left <$> idatA)
+            in  (odatC, ovldC, bundle (irdyA, irdyB))
+
+    stepSelect = step `seqDF` (stepSelect `parDF` stepSelect)
+      where
+        step = DF $ \idatA ivldA (unbundle -> (ordyB, ordyC)) ->
+            let sel   = mux ivldA (isRight <$> idatA) prior
+                ovldB = ivldA .&&. not <$> sel
+                ovldC = ivldA .&&. sel
+                irdyA = mux sel ordyC ordyB
+                odatB = fromLeft undefined <$> idatA
+                odatC = fromRight undefined <$> idatA
+            in  (bundle (odatB, odatC), bundle (ovldB, ovldC), irdyA)
+
+selDF :: forall dom a b c d
+       . DataFlow dom Bool Bool a b
+      -> DataFlow dom Bool Bool c d
+      -> DataFlow dom Bool Bool (Either a c) (Either b d)
+f `selDF` g = stepSelect `seqDF` (f `parDF` g) `seqDF` selectStep
+
+leftDF :: forall dom a b c
+        . DataFlow dom Bool Bool a b
+       -> DataFlow dom Bool Bool (Either a c) (Either b c)
+leftDF f = f `selDF` idDF
+
+rightDF :: forall dom a b c
+         . DataFlow dom Bool Bool a b
+        -> DataFlow dom Bool Bool (Either c a) (Either c b)
+rightDF g = idDF `selDF` g
+
+justDF :: forall dom a b . DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (Maybe a) (Maybe b)
+justDF f = pureDF (maybeToEither ()) `seqDF` rightDF f `seqDF` pureDF eitherToMaybe
+
+flipDF :: forall dom a b . DataFlow dom Bool Bool (Either a b) (Either b a)
+flipDF = DF $ \idat ivld ordy -> (flipEither <$> idat, ivld, ordy)
+  where
+    flipEither (Left  x) = Right x
+    flipEither (Right x) = Left x
+
+inorder :: forall dom a b
+         . HiddenClockResetEnable dom
+        => DataFlow dom Bool Bool a b
+        -> DataFlow dom Bool Bool a b
+inorder f =
+    pureDF (, ())
+        `seqDF` stepLock
+        `seqDF` (f `parDF` hideClockResetEnable queueDF SMulti)
+        `seqDF` lockStep
+        `seqDF` pureDF fst
+
+selDF' :: forall dom a b c d
+        . HiddenClockResetEnable dom
+       => DataFlow dom Bool Bool a b
+       -> DataFlow dom Bool Bool c d
+       -> DataFlow dom Bool Bool (Either a c) (Either b d)
+selDF' f g = inorder $ f `selDF` g
+
+leftDF' :: forall dom a b c
+         . HiddenClockResetEnable dom
+        => DataFlow dom Bool Bool a b
+        -> DataFlow dom Bool Bool (Either a c) (Either b c)
+leftDF' f = f `selDF'` idDF
+
+rightDF' :: forall dom a b c
+          . HiddenClockResetEnable dom
+         => DataFlow dom Bool Bool a b
+         -> DataFlow dom Bool Bool (Either c a) (Either c b)
+rightDF' g = idDF `selDF'` g
+
+justDF' :: forall dom a b
+         . HiddenClockResetEnable dom
+        => DataFlow dom Bool Bool a b
+        -> DataFlow dom Bool Bool (Maybe a) (Maybe b)
+justDF' f = pureDF (maybeToEither ()) `seqDF` rightDF' f `seqDF` pureDF eitherToMaybe
 
 simulateDF :: forall dom a b
             . KnownDomain dom
@@ -389,3 +430,28 @@ simulateDF f x@(L.length -> n) = (sample osig L.!! done)
     osig = regEn clk rst ena [] (ovld .&&. ordy) $ L.snoc <$> osig <*> bundle (odat, cnt)
 
     done               = L.head . L.findIndices ((== n) . L.length) $ sample osig
+
+simulateDFN :: forall dom a b
+             . KnownDomain dom
+            => NFDataX a
+            => Show a
+            => NFDataX b
+            => Int
+            -> (HiddenClockResetEnable dom => DataFlow dom Bool Bool a b)
+            -> [a]
+            -> [(b, Int)]
+simulateDFN time f x = (sample osig L.!! time)
+  where
+    clk                = clockGen
+    rst                = resetGen
+    ena                = enableGen
+    cnt                = register clk rst ena 0 $ succ <$> cnt
+
+    (odat, ovld, irdy) = df (withClockResetEnable clk rst ena f) idat ivld ordy
+
+    idat               = mux ivld (L.head <$> isig) $ pure undefined
+    ivld               = (/= 0) . L.length <$> isig
+    ordy               = pure True
+
+    isig               = regEn clk rst ena x (ivld .&&. irdy) $ L.tail <$> isig
+    osig = regEn clk rst ena [] (ovld .&&. ordy) $ L.snoc <$> osig <*> bundle (odat, cnt)

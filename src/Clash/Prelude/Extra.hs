@@ -10,18 +10,22 @@ import           Clash.Prelude.DataFlow.Extra  as Exports
                                                 , unfoldDF'
                                                 , foldDF
                                                 , foldDF'
-                                                , SelectStep(..)
-                                                , selDF
-                                                , leftDF
-                                                , rightDF
-                                                , justDF
-                                                , flipDF
                                                 , sourceDF
                                                 , sinkDF
                                                 , traceDF
                                                 , ramDF
                                                 , SQueueMode(..)
                                                 , queueDF
+                                                , SelectStep(..)
+                                                , selDF
+                                                , leftDF
+                                                , rightDF
+                                                , justDF
+                                                , flipDF
+                                                , selDF'
+                                                , leftDF'
+                                                , rightDF'
+                                                , justDF'
                                                 , simulateDF
                                                 )
 import           Clash.Sized.Index.Extra       as Exports

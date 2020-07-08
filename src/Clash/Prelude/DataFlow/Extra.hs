@@ -376,7 +376,7 @@ inorder :: forall dom a b
 inorder f =
     pureDF (, ())
         `seqDF` stepLock
-        `seqDF` (f `parDF` hideClockResetEnable queueDF SMulti)
+        `seqDF` (f `parDF` hideClockResetEnable queueDF SMono)
         `seqDF` lockStep
         `seqDF` pureDF fst
 

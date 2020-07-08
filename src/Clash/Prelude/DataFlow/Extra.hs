@@ -382,27 +382,35 @@ inorder f =
 
 selDF' :: forall dom a b c d
         . HiddenClockResetEnable dom
+       => NFDataX b
+       => NFDataX d
        => DataFlow dom Bool Bool a b
        -> DataFlow dom Bool Bool c d
        -> DataFlow dom Bool Bool (Either a c) (Either b d)
-selDF' f g = inorder $ f `selDF` g
+selDF' f g = inorder
+    (       (f `seqDF` hideClockResetEnable queueDF SMulti)
+    `selDF` (g `seqDF` hideClockResetEnable queueDF SMulti)
+    )
 
 leftDF' :: forall dom a b c
          . HiddenClockResetEnable dom
+        => NFDataX b
+        => NFDataX c
         => DataFlow dom Bool Bool a b
         -> DataFlow dom Bool Bool (Either a c) (Either b c)
 leftDF' f = f `selDF'` idDF
 
 rightDF' :: forall dom a b c
           . HiddenClockResetEnable dom
+         => NFDataX b
+         => NFDataX c
          => DataFlow dom Bool Bool a b
          -> DataFlow dom Bool Bool (Either c a) (Either c b)
 rightDF' g = idDF `selDF'` g
 
 justDF' :: forall dom a b
          . HiddenClockResetEnable dom
-        => DataFlow dom Bool Bool a b
-        -> DataFlow dom Bool Bool (Maybe a) (Maybe b)
+        => NFDataX b => DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (Maybe a) (Maybe b)
 justDF' f = pureDF (maybeToEither ()) `seqDF` rightDF' f `seqDF` pureDF eitherToMaybe
 
 parDF' :: forall dom a b c d

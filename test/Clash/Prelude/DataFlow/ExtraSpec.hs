@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module Clash.Prelude.DataFlow.ExtraSpec
     ( spec
     )

@@ -1,10 +1,8 @@
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Clash.Prelude.DataFlow.Extra where
 

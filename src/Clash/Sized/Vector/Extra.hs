@@ -1,5 +1,3 @@
-{-# LANGUAGE Rank2Types #-}
-
 module Clash.Sized.Vector.Extra where
 
 import           Clash.Prelude

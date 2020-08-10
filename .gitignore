@@ -10,12 +10,11 @@
 !/.github/workflows/*.yml
 
 # Haskell
-!/app/**/*.hs
 !/src/**/*.hs
 !/test/**/*.hs
-!/script/**/*.hs
 
 # Stack
 !/package.yaml
 !/stack.yaml
+!/hie.yaml
 !/Setup.hs

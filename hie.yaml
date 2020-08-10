@@ -1,0 +1,6 @@
+cradle:
+  stack:
+  - path: src
+    component: "clash-prelude-extra:lib"
+  - path: test
+    component: "clash-prelude-extra:test:clash-prelude-extra-test"

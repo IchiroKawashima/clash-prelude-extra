@@ -13,50 +13,55 @@ description:         Please see the README on GitHub at <https://github.com/Ichi
 
 dependencies:
 - base >= 4.7 && < 5
+- clash-prelude >= 1.2.2 && < 1.4
 - ghc-typelits-extra
-- ghc-typelits-knownnat
 - ghc-typelits-natnormalise
-- clash-prelude
+- ghc-typelits-knownnat
 - singletons
 - constraints
 - extra
 
 ghc-options:
-- -fplugin=GHC.TypeLits.Normalise
 - -fplugin=GHC.TypeLits.Extra.Solver
+- -fplugin=GHC.TypeLits.Normalise
 - -fplugin=GHC.TypeLits.KnownNat.Solver
+- -fconstraint-solver-iterations=0
 - -fexpose-all-unfoldings
 - -fno-worker-wrapper
 - -Wall
+- -Wcompat
 
 default-extensions:
+- BangPatterns
 - BinaryLiterals
 - ConstraintKinds
 - DataKinds
-- NoDatatypeContexts
+- DefaultSignatures
 - DeriveAnyClass
+- DeriveDataTypeable
+- DeriveFoldable
+- DeriveFunctor
 - DeriveGeneric
 - DeriveLift
+- DeriveTraversable
 - DerivingStrategies
 - ExplicitForAll
-- ExplicitNamespaces
-- FlexibleContexts
-- FlexibleInstances
-- NoImplicitPrelude
+- InstanceSigs
 - KindSignatures
-- MagicHash
-- MonoLocalBinds
-- NoMonomorphismRestriction
-- NondecreasingIndentation
-- QuasiQuotes
-- ScopedTypeVariables
+- LambdaCase
+- NoImplicitPrelude
 - NoStarIsType
-- TemplateHaskell
-- TemplateHaskellQuotes
+- PolyKinds
+- RankNTypes
+- ScopedTypeVariables
+- StandaloneDeriving
+- TupleSections
 - TypeApplications
 - TypeFamilies
 - TypeOperators
-- NoStarIsType
+- ViewPatterns
+- TemplateHaskell
+- QuasiQuotes
 
 library:
   source-dirs: src

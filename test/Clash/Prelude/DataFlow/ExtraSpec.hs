@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module Clash.Prelude.DataFlow.ExtraSpec
     ( spec
     )
@@ -96,13 +98,17 @@ spec = do
 
         let target :: (Int, Int) -> (Int, Int)
             target =
-                fst
-                    . L.head
-                    . simulateDF @System
-                          (       hideClockResetEnable decompressDF repeater
-                          `seqDF` hideClockResetEnable compressDF   counter
+                head
+                    . fst
+                    . uncurry
+                          (simulateDF @System @1 @1
+                              100
+                              (       hideClockResetEnable decompressDF repeater
+                              `seqDF` hideClockResetEnable compressDF   counter
+                              )
                           )
-                    . L.replicate 1
+                    . (, repeat 0)
+                    . repeat
 
         it "reconstruct given data" $ do
 

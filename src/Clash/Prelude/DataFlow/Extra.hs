@@ -23,7 +23,6 @@ import           Data.Singletons.TH      hiding ( type (<=) )
 import           Data.Constraint         hiding ( (&&&) )
 import           Data.Constraint.Nat
 import qualified Data.List                     as L
-import qualified Data.List.Extra               as L
 import           Data.Maybe
 import           Data.Tuple.Extra
 import           Data.Either.Extra
@@ -439,53 +438,63 @@ secondDF' :: forall dom a b c
           => NFDataX c => DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (c, a) (c, b)
 secondDF' g = idDF `parDF'` g
 
-simulateDF :: forall dom a b
-            . KnownDomain dom
+testDF :: forall dom n m a b
+        . HasCallStack
+       => KnownDomain dom
+       => KnownNat n
+       => KnownNat m
+       => NFDataX a
+       => NFDataX b
+       => Clock dom
+       -> Reset dom
+       -> Enable dom
+       -> Int
+       -> (HiddenClockResetEnable dom => DataFlow dom Bool Bool a b)
+       -> Vec n a
+       -> Vec n Int
+       -> ( (Signal dom Bool, Signal dom Bool)
+          , (Signal dom (Vec m b), Signal dom (Vec m Int))
+          )
+testDF clk rst ena n f (pure -> x) (pure -> i) = ((done, term), unbundle $ unzip <$> y)
+  where
+    cnt                = register clk rst ena 0 $ succ <$> cnt
+
+    (odat, ovld, irdy) = df (withClockResetEnable clk rst ena f) idat ivld ordy
+
+    idat               = mux ivld ((!!) <$> x <*> iptr) (pure undefined)
+    ivld               = ((/= snatToInteger (SNat @n)) <$> iptr) .&&. sleep
+    ordy               = ((/= snatToInteger (SNat @m)) <$> optr)
+
+    sleep              = (cnt - 1) - xcnt .>=. ((!!) <$> i <*> iptr)
+    xcnt               = regEn clk rst ena (-1) (ivld .&&. irdy) cnt
+    ycnt               = regEn clk rst ena (-1) (ovld .&&. ordy) cnt
+
+    iptr               = regEn clk rst ena 0 (ivld .&&. irdy) $ succ <$> iptr
+    optr               = regEn clk rst ena 0 (ovld .&&. ordy) $ succ <$> optr
+
+    y                  = register clk rst ena (repeat (undefined, undefined)) y'
+    y'                 = mux ovld (replace <$> optr <*> ((,) <$> odat <*> (cnt - 1) - ycnt) <*> y) y
+
+    done               = not <$> ordy
+    term               = (>= n) <$> cnt
+
+simulateDF :: forall dom n m a b
+            . HasCallStack
+           => KnownDomain dom
+           => KnownNat n
+           => KnownNat m
            => NFDataX a
-           => Show a
            => NFDataX b
-           => (HiddenClockResetEnable dom => DataFlow dom Bool Bool a b)
-           -> [a]
-           -> [(b, Int)]
-simulateDF f x@(L.length -> n) = (sample osig L.!! done)
+           => Int
+           -> (HiddenClockResetEnable dom => DataFlow dom Bool Bool a b)
+           -> Vec n a
+           -> Vec n Int
+           -> (Vec m b, Vec m Int)
+simulateDF n f x i = (sample y L.!! cnt, sample i' L.!! cnt)
   where
-    clk                = clockGen
-    rst                = resetGen
-    ena                = enableGen
-    cnt                = register clk rst ena 0 $ succ <$> cnt
+    clk            = clockGen
+    rst            = resetGen
+    ena            = enableGen
 
-    (odat, ovld, irdy) = df (withClockResetEnable clk rst ena f) idat ivld ordy
-
-    idat               = mux ivld (L.head <$> isig) $ pure undefined
-    ivld               = (/= 0) . L.length <$> isig
-    ordy               = (/= n) . L.length <$> osig
-
-    isig               = regEn clk rst ena x (ivld .&&. irdy) $ L.tail <$> isig
-    osig = regEn clk rst ena [] (ovld .&&. ordy) $ L.snoc <$> osig <*> bundle (odat, cnt)
-
-    done               = L.head . L.findIndices ((== n) . L.length) $ sample osig
-
-simulateDFN :: forall dom a b
-             . KnownDomain dom
-            => NFDataX a
-            => Show a
-            => NFDataX b
-            => Int
-            -> (HiddenClockResetEnable dom => DataFlow dom Bool Bool a b)
-            -> [a]
-            -> [(b, Int)]
-simulateDFN time f x = (sample osig L.!! time)
-  where
-    clk                = clockGen
-    rst                = resetGen
-    ena                = enableGen
-    cnt                = register clk rst ena 0 $ succ <$> cnt
-
-    (odat, ovld, irdy) = df (withClockResetEnable clk rst ena f) idat ivld ordy
-
-    idat               = mux ivld (L.head <$> isig) $ pure undefined
-    ivld               = (/= 0) . L.length <$> isig
-    ordy               = pure True
-
-    isig               = regEn clk rst ena x (ivld .&&. irdy) $ L.tail <$> isig
-    osig = regEn clk rst ena [] (ovld .&&. ordy) $ L.snoc <$> osig <*> bundle (odat, cnt)
+    (fin, (y, i')) = testDF clk rst ena n f x i
+    cnt            = uncurry min $ both (L.length . L.takeWhile not . sample) fin

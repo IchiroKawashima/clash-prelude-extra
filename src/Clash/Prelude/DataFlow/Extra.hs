@@ -273,10 +273,10 @@ ramDF ::
   Clock dom ->
   Reset dom ->
   Enable dom ->
-  Vec (2 ^ n) a ->
+  (Signal dom (Unsigned n) -> Signal dom (Maybe (Unsigned n, a)) -> Signal dom a) ->
   Signal dom (Maybe (Unsigned n, a)) ->
   DataFlow dom Bool Bool (Unsigned n) a
-ramDF clk rst ena mem iwadrdat = DF $ \iradr irvld orrdy ->
+ramDF clk rst ena ram iwadrdat = DF $ \iradr irvld orrdy ->
   let lock0 = irvld .||. busy1
       lock1 = irvld .&&. not <$> orrdy .&&. busy0
       free0 = orrdy .&&. not <$> irvld .&&. not <$> busy1
@@ -286,9 +286,7 @@ ramDF clk rst ena mem iwadrdat = DF $ \iradr irvld orrdy ->
       temp0 =
         mux (lock0 .&&. free1) (mux busy1 temp1 iradr) $ register clk rst ena undefined temp0
       temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) iradr
-
-      ordat = readNew clk rst ena (blockRamPow2 clk ena mem) temp0 iwadrdat
-   in (ordat, busy0, not <$> busy1)
+   in (ram temp0 iwadrdat, busy0, not <$> busy1)
 
 $(singletons [d|data QueueMode = None | Mono | Multi|])
 

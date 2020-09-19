@@ -225,7 +225,10 @@ spec = do
             . L.map (\(d, v, r) -> (maybeIsX d, v, r))
             . simulateB @System
               ( uncurry $
-                  \w -> uncurry3 (df $ hideClockResetEnable ramDF ini w) . unbundle
+                  \w ->
+                    uncurry3
+                      (df $ hideClockResetEnable ramDF (readNew (blockRamPow2 ini)) w)
+                      . unbundle
               )
             $ is
 

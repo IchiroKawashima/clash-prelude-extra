@@ -264,7 +264,7 @@ traceDF clk rst ena name = DF $ \idata ivld ordy -> unbundle $ do
 
   pure $ trace (name <> ": " <> showX (d', v', r')) (d, v, r)
 
-ramDF ::
+ram2df ::
   forall dom n a.
   HasCallStack =>
   KnownDomain dom =>
@@ -276,17 +276,40 @@ ramDF ::
   (Signal dom (Unsigned n) -> Signal dom (Maybe (Unsigned n, a)) -> Signal dom a) ->
   Signal dom (Maybe (Unsigned n, a)) ->
   DataFlow dom Bool Bool (Unsigned n) a
-ramDF clk rst ena ram iwadrdat = DF $ \iradr irvld orrdy ->
-  let lock0 = irvld .||. busy1
-      lock1 = irvld .&&. not <$> orrdy .&&. busy0
-      free0 = orrdy .&&. not <$> irvld .&&. not <$> busy1
-      free1 = orrdy .||. not <$> busy0
+ram2df clk rst ena ram iwadrdat = DF $ \iradr ivld ordy ->
+  let lock0 = ivld .||. busy1
+      lock1 = ivld .&&. not <$> ordy .&&. busy0
+      free0 = ordy .&&. not <$> ivld .&&. not <$> busy1
+      free1 = ordy .||. not <$> busy0
       busy0 = register clk rst ena False $ mux busy0 (not <$> free0) lock0
       busy1 = register clk rst ena False $ mux busy1 (not <$> free1) lock1
       temp0 =
         mux (lock0 .&&. free1) (mux busy1 temp1 iradr) $ register clk rst ena undefined temp0
       temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) iradr
    in (ram temp0 iwadrdat, busy0, not <$> busy1)
+
+reg2df ::
+  forall dom a.
+  HasCallStack =>
+  KnownDomain dom =>
+  NFDataX a =>
+  Clock dom ->
+  Reset dom ->
+  Enable dom ->
+  (Signal dom a -> Signal dom a) ->
+  Signal dom (Maybe a) ->
+  DataFlow dom Bool Bool a a
+reg2df clk rst ena reg iwdat = DF $ \idat ivld ordy ->
+  let lock0 = ivld .||. busy1
+      lock1 = ivld .&&. not <$> ordy .&&. busy0
+      free0 = ordy .&&. not <$> ivld .&&. not <$> busy1
+      free1 = ordy .||. not <$> busy0
+      busy0 = register clk rst ena True $ mux busy0 (not <$> free0) lock0
+      busy1 = register clk rst ena False $ mux busy1 (not <$> free1) lock1
+      temp0 =
+        mux (lock0 .&&. free1) (mux busy1 temp1 idat) $ register clk rst ena undefined temp0
+      temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) idat
+   in (reg $ fromMaybe <$> temp0 <*> iwdat, busy0, not <$> busy1)
 
 $(singletons [d|data QueueMode = None | Mono | Multi|])
 

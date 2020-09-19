@@ -214,41 +214,38 @@ spec = do
 
     it "source does not emit any data" $ target 3 `shouldBe` (Nothing, 3)
 
-  describe "ramDF" $ do
+  describe "ram2df" $ do
     let ini = 2 :> 3 :> 5 :> 7 :> 11 :> 13 :> 17 :> 19 :> Nil
 
-        target ::
-          [(Maybe (Unsigned 3, Int), (Unsigned 3, Bool, Bool))] ->
-          [(Maybe Int, Bool, Bool)]
+        target :: [(Maybe (Unsigned 3, Int), (Unsigned 3, Bool, Bool))] -> [(Maybe Int, Bool, Bool)]
         target is =
           L.take (L.length is)
             . L.map (\(d, v, r) -> (maybeIsX d, v, r))
             . simulateB @System
-              ( uncurry $
-                  \w ->
-                    uncurry3
-                      (df $ hideClockResetEnable ramDF (readNew (blockRamPow2 ini)) w)
-                      . unbundle
+              ( uncurry $ \w ->
+                  uncurry3
+                    (df $ hideClockResetEnable ram2df (readNew (blockRamPow2 ini)) w)
+                    . unbundle
               )
             $ is
 
     it "outputs stored data with updating with new input" $ do
       let i =
-            [ (Just (0, 20), (undefined, False, False)),
-              (Just (0, 21), (undefined, False, True)),
-              (Just (0, 22), (0, True, False)),
-              (Just (0, 23), (undefined, False, False)),
-              (Just (1, 24), (1, True, False)),
-              (Just (1, 25), (undefined, False, False)),
-              (Just (1, 26), (2, True, False)),
-              (Just (1, 27), (undefined, False, True)),
-              (Just (1, 28), (undefined, False, True)),
-              (Just (2, 29), (3, True, True)),
-              (Just (2, 30), (4, True, True)),
-              (Just (2, 31), (5, True, False)),
-              (Just (2, 32), (6, True, True)),
-              (Just (2, 33), (undefined, False, True)),
-              (Just (2, 34), (undefined, False, False))
+            [ (Just (0, 20), (undefined, False, False)), --xx
+              (Just (0, 21), (undefined, False, True)), --xx
+              (Just (0, 22), (0, True, False)), --xx
+              (Just (0, 23), (undefined, False, False)), --ox
+              (Just (1, 24), (1, True, False)), --ox
+              (Just (1, 25), (undefined, False, False)), --oo
+              (Just (1, 26), (2, True, False)), --oo
+              (Just (1, 27), (undefined, False, True)), --oo
+              (Just (1, 28), (undefined, False, True)), --ox
+              (Just (2, 29), (3, True, True)), --xx
+              (Just (2, 30), (4, True, True)), --ox
+              (Just (2, 31), (5, True, False)), --ox
+              (Just (2, 32), (6, True, True)), --oo
+              (Just (2, 33), (undefined, False, True)), --ox
+              (Just (2, 34), (undefined, False, False)) --xx
             ]
 
           o =
@@ -271,6 +268,56 @@ spec = do
 
       target i `shouldBe` o
 
+  describe "reg2df" $ do
+    let target :: [(Maybe Int, (Int, Bool, Bool))] -> [(Maybe Int, Bool, Bool)]
+        target is =
+          L.take (L.length is)
+            . L.map (\(d, v, r) -> (maybeIsX d, v, r))
+            . simulateB @System
+              ( uncurry $ \w ->
+                  uncurry3 (df $ hideClockResetEnable reg2df (register 2) w) . unbundle
+              )
+            $ is
+
+    it "outputs stored data with updating with new input" $ do
+      let i =
+            [ (Just 3, (undefined, False, False)), --ox
+              (Just 5, (1, True, False)), --ox
+              (Just 7, (undefined, False, False)), --oo
+              (Just 11, (2, True, False)), --oo
+              (Just 13, (undefined, False, True)), --oo
+              (Just 17, (undefined, False, True)), --ox
+              (Just 19, (undefined, False, False)), --xx
+              (Just 23, (undefined, False, True)), --xx
+              (Just 29, (3, True, True)), --xx
+              (Just 31, (4, True, True)), --ox
+              (Just 37, (5, True, False)), --ox
+              (Just 41, (6, True, True)), --oo
+              (Just 43, (undefined, False, True)), --ox
+              (Just 47, (0, True, False)), --xx
+              (Just 49, (undefined, False, False)) --ox
+            ]
+
+          o =
+            [ (Just 2, True, True),
+              (Just 3, True, True),
+              (Nothing, True, False),
+              (Just 22, True, False),
+              (Just 23, True, False),
+              (Just 23, True, True),
+              (Just 23, False, True),
+              (Just 23, False, True),
+              (Just 27, False, True),
+              (Just 28, True, True),
+              (Just 7, True, True),
+              (Just 11, True, False),
+              (Just 11, True, True),
+              (Just 13, True, False),
+              (Just 13, True, True)
+            ]
+
+      target i `shouldBe` o
+
   describe "queueDF" $ do
     let target ::
           forall mode.
@@ -284,13 +331,6 @@ spec = do
             $ is
 
     it "behaves as idDF in SNone mode" $ do
-      --test patterns
-      --valid,ready
-      --00
-      --01
-      --10
-      --11
-
       let i =
             [ (undefined, False, False),
               (undefined, False, True),
@@ -308,28 +348,16 @@ spec = do
       target SNone i `shouldBe` o
 
     it "passes data intermittently in SMono mode" $ do
-      --test patterns
-      --state,valid,ready
-      --000
-      --001
-      --010
-      --100
-      --101
-      --011
-      --110
-      --111
-      --000
-
       let i =
-            [ (undefined, False, False),
-              (undefined, False, True),
-              (2, True, False),
-              (undefined, False, False),
-              (undefined, False, True),
-              (3, True, True),
-              (5, True, False),
-              (7, True, True),
-              (undefined, False, False)
+            [ (undefined, False, False), --x
+              (undefined, False, True), --x
+              (2, True, False), --x
+              (undefined, False, False), --o
+              (undefined, False, True), --o
+              (3, True, True), --x
+              (5, True, False), --o
+              (7, True, True), --o
+              (undefined, False, False) --x
             ]
 
           o =
@@ -347,40 +375,22 @@ spec = do
       target SMono i `shouldBe` o
 
     it "passes data continuously in SMulti mode" $ do
-      --test patterns
-      --state,valid,ready, ,data
-      --000 xx
-      --001 xx
-      --010 xx
-      --100 2x
-      --110 2x
-      --200 23
-      --210 23
-      --201 23
-      --101 3x
-      --011 xx
-      --111 7x
-      --110 9x
-      --211 91
-      --101 1x
-      --000 xx
-
       let i =
-            [ (undefined, False, False),
-              (undefined, False, True),
-              (2, True, False),
-              (undefined, False, False),
-              (3, True, False),
-              (undefined, False, False),
-              (5, True, False),
-              (undefined, False, True),
-              (undefined, False, True),
-              (7, True, True),
-              (9, True, True),
-              (11, True, False),
-              (13, True, True),
-              (undefined, False, True),
-              (undefined, False, False)
+            [ (undefined, False, False), --xx
+              (undefined, False, True), --xx
+              (2, True, False), --xx
+              (undefined, False, False), --ox
+              (3, True, False), --ox
+              (undefined, False, False), --oo
+              (5, True, False), --oo
+              (undefined, False, True), --oo
+              (undefined, False, True), --ox
+              (7, True, True), --xx
+              (9, True, True), -- ox
+              (11, True, False), --ox
+              (13, True, True), --oo
+              (undefined, False, True), --ox
+              (undefined, False, False) --xx
             ]
 
           o =

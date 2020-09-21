@@ -276,16 +276,16 @@ ramDF ::
   Vec (2 ^ n) a ->
   Signal dom (Maybe (Unsigned n, a)) ->
   DataFlow dom Bool Bool (Unsigned n) a
-ramDF clk rst ena mem iwadrdat = DF $ \iradr irvld orrdy ->
-  let lock0 = irvld .||. busy1
-      lock1 = irvld .&&. not <$> orrdy .&&. busy0
-      free0 = orrdy .&&. not <$> irvld .&&. not <$> busy1
-      free1 = orrdy .||. not <$> busy0
+ramDF clk rst ena mem iwdat = DF $ \iadr ivld ordy ->
+  let lock0 = ivld .||. busy1
+      lock1 = ivld .&&. not <$> ordy .&&. busy0
+      free0 = ordy .&&. not <$> ivld .&&. not <$> busy1
+      free1 = ordy .||. not <$> busy0
       busy0 = register clk rst ena False $ mux busy0 (not <$> free0) lock0
       busy1 = register clk rst ena False $ mux busy1 (not <$> free1) lock1
-      temp0 = mux (lock0 .&&. free1) (mux busy1 temp1 iradr) $ register clk rst ena undefined temp0
-      temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) iradr
-      ordat = readNew clk rst ena (blockRamPow2 clk ena mem) temp0 iwadrdat
+      temp0 = mux (lock0 .&&. free1) (mux busy1 temp1 iadr) $ register clk rst ena undefined temp0
+      temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) iadr
+      ordat = readNew clk rst ena (blockRamPow2 clk ena mem) temp0 iwdat
    in (ordat, busy0, not <$> busy1)
 
 regDF ::
@@ -423,11 +423,7 @@ selDF' ::
   DataFlow dom Bool Bool a b ->
   DataFlow dom Bool Bool c d ->
   DataFlow dom Bool Bool (Either a c) (Either b d)
-selDF' f g =
-  inorder
-    ( (f `seqDF` hideClockResetEnable queueDF SMulti)
-        `selDF` (g `seqDF` hideClockResetEnable queueDF SMulti)
-    )
+selDF' f g = inorder $ f `selDF` g
 
 leftDF' ::
   forall dom a b c.
@@ -436,7 +432,7 @@ leftDF' ::
   NFDataX c =>
   DataFlow dom Bool Bool a b ->
   DataFlow dom Bool Bool (Either a c) (Either b c)
-leftDF' f = f `selDF'` idDF
+leftDF' f = f `selDF'` hideClockResetEnable queueDF SMulti
 
 rightDF' ::
   forall dom a b c.
@@ -445,7 +441,7 @@ rightDF' ::
   NFDataX c =>
   DataFlow dom Bool Bool a b ->
   DataFlow dom Bool Bool (Either c a) (Either c b)
-rightDF' g = idDF `selDF'` g
+rightDF' g = hideClockResetEnable queueDF SMulti `selDF'` g
 
 justDF' ::
   forall dom a b.
@@ -463,12 +459,7 @@ parDF' ::
   DataFlow dom Bool Bool a b ->
   DataFlow dom Bool Bool c d ->
   DataFlow dom Bool Bool (a, c) (b, d)
-f `parDF'` g =
-  stepLock
-    `seqDF` ( (f `seqDF` hideClockResetEnable queueDF SMulti)
-                `parDF` (g `seqDF` hideClockResetEnable queueDF SMulti)
-            )
-    `seqDF` lockStep
+f `parDF'` g = stepLock `seqDF` (f `parDF` g) `seqDF` lockStep
 
 firstDF' ::
   forall dom a b c.
@@ -477,7 +468,7 @@ firstDF' ::
   NFDataX c =>
   DataFlow dom Bool Bool a b ->
   DataFlow dom Bool Bool (a, c) (b, c)
-firstDF' f = f `parDF'` idDF
+firstDF' f = f `parDF'` hideClockResetEnable queueDF SMulti
 
 secondDF' ::
   forall dom a b c.
@@ -486,14 +477,14 @@ secondDF' ::
   NFDataX c =>
   DataFlow dom Bool Bool a b ->
   DataFlow dom Bool Bool (c, a) (c, b)
-secondDF' g = idDF `parDF'` g
+secondDF' g = hideClockResetEnable queueDF SMulti `parDF'` g
 
 testDF ::
-  forall dom n m a b.
+  forall dom m n a b.
   HasCallStack =>
   KnownDomain dom =>
-  KnownNat n =>
   KnownNat m =>
+  KnownNat n =>
   NFDataX a =>
   NFDataX b =>
   Clock dom ->
@@ -501,9 +492,9 @@ testDF ::
   Enable dom ->
   Int ->
   (HiddenClockResetEnable dom => DataFlow dom Bool Bool a b) ->
-  Vec n a ->
-  Vec n Int ->
-  Signal dom ((Bool, Bool), (Vec m b, Vec m Int))
+  Vec m a ->
+  Vec m Int ->
+  Signal dom ((Bool, Bool), (Vec n b, Vec n Int))
 testDF clk rst ena n f (pure -> x) (pure -> i) = bundle (bundle (done, term), unzip <$> y)
   where
     cnt = register clk rst ena 0 $ succ <$> cnt
@@ -528,18 +519,18 @@ testDF clk rst ena n f (pure -> x) (pure -> i) = bundle (bundle (done, term), un
     term = (>= n) <$> cnt
 
 simulateDF ::
-  forall dom n m a b.
+  forall dom m n a b.
   HasCallStack =>
   KnownDomain dom =>
-  KnownNat n =>
   KnownNat m =>
+  KnownNat n =>
   NFDataX a =>
   NFDataX b =>
   Int ->
   (HiddenClockResetEnable dom => DataFlow dom Bool Bool a b) ->
-  Vec n a ->
-  Vec n Int ->
-  (Vec m b, Vec m Int)
+  Vec m a ->
+  Vec m Int ->
+  (Vec n b, Vec n Int)
 simulateDF n f x i = (sample y L.!! cnt, sample i' L.!! cnt)
   where
     clk = clockGen

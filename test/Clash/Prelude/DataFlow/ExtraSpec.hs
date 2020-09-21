@@ -214,7 +214,7 @@ spec = do
 
     it "source does not emit any data" $ target 3 `shouldBe` (Nothing, 3)
 
-  describe "ram2df" $ do
+  describe "ramDF" $ do
     let ini = 2 :> 3 :> 5 :> 7 :> 11 :> 13 :> 17 :> 19 :> Nil
 
         target :: [(Maybe (Unsigned 3, Int), (Unsigned 3, Bool, Bool))] -> [(Maybe Int, Bool, Bool)]
@@ -222,11 +222,7 @@ spec = do
           L.take (L.length is)
             . L.map (\(d, v, r) -> (maybeIsX d, v, r))
             . simulateB @System
-              ( uncurry $ \w ->
-                  uncurry3
-                    (df $ hideClockResetEnable ram2df (readNew (blockRamPow2 ini)) w)
-                    . unbundle
-              )
+              (uncurry $ \w -> uncurry3 (df $ hideClockResetEnable ramDF ini w) . unbundle)
             $ is
 
     it "outputs stored data with updating with new input" $ do
@@ -268,52 +264,49 @@ spec = do
 
       target i `shouldBe` o
 
-  describe "reg2df" $ do
-    let target :: [(Maybe Int, (Int, Bool, Bool))] -> [(Maybe Int, Bool, Bool)]
+  describe "regDF" $ do
+    let target :: [(Int, Bool, Bool)] -> [(Maybe Int, Bool, Bool)]
         target is =
           L.take (L.length is)
             . L.map (\(d, v, r) -> (maybeIsX d, v, r))
-            . simulateB @System
-              ( uncurry $ \w ->
-                  uncurry3 (df $ hideClockResetEnable reg2df (register 2) w) . unbundle
-              )
+            . simulateB @System (uncurry3 (df $ hideClockResetEnable regDF 2))
             $ is
 
     it "outputs stored data with updating with new input" $ do
       let i =
-            [ (Just 3, (undefined, False, False)), --ox
-              (Just 5, (1, True, False)), --ox
-              (Just 7, (undefined, False, False)), --oo
-              (Just 11, (2, True, False)), --oo
-              (Just 13, (undefined, False, True)), --oo
-              (Just 17, (undefined, False, True)), --ox
-              (Just 19, (undefined, False, False)), --xx
-              (Just 23, (undefined, False, True)), --xx
-              (Just 29, (3, True, True)), --xx
-              (Just 31, (4, True, True)), --ox
-              (Just 37, (5, True, False)), --ox
-              (Just 41, (6, True, True)), --oo
-              (Just 43, (undefined, False, True)), --ox
-              (Just 47, (0, True, False)), --xx
-              (Just 49, (undefined, False, False)) --ox
+            [ (undefined, False, False), --ox
+              (3, True, False), --ox
+              (undefined, False, False), --oo
+              (5, True, False), --oo
+              (undefined, False, True), --oo
+              (undefined, False, True), --ox
+              (undefined, False, False), --xx
+              (undefined, False, True), --xx
+              (7, True, True), --xx
+              (11, True, True), --ox
+              (13, True, False), --ox
+              (17, True, True), --oo
+              (undefined, False, True), --ox
+              (19, True, False), --xx
+              (undefined, False, False) --ox
             ]
 
           o =
             [ (Just 2, True, True),
+              (Just 2, True, True),
+              (Just 2, True, False),
+              (Just 2, True, False),
+              (Just 2, True, False),
               (Just 3, True, True),
-              (Nothing, True, False),
-              (Just 22, True, False),
-              (Just 23, True, False),
-              (Just 23, True, True),
-              (Just 23, False, True),
-              (Just 23, False, True),
-              (Just 27, False, True),
-              (Just 28, True, True),
+              (Just 3, False, True),
+              (Just 3, False, True),
+              (Just 3, False, True),
               (Just 7, True, True),
-              (Just 11, True, False),
               (Just 11, True, True),
-              (Just 13, True, False),
-              (Just 13, True, True)
+              (Just 11, True, False),
+              (Just 13, True, True),
+              (Just 13, False, True),
+              (Just 19, True, True)
             ]
 
       target i `shouldBe` o

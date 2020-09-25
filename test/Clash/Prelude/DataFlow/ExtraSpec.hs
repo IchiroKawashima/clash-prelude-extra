@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Clash.Prelude.DataFlow.ExtraSpec
   ( spec,
   )
@@ -115,17 +117,17 @@ spec = do
 
   describe "selectStep" $ do
     let target ::
-          forall i o iEn.
-          NFDataX i =>
+          forall o iEn.
           NFDataX o =>
           NFDataX iEn =>
-          SelectStep iEn i o =>
-          [(i, iEn, Bool)] ->
+          NFDataX (Select iEn o) =>
+          SelectStep iEn o =>
+          [(Select iEn o, iEn, Bool)] ->
           [(o, Bool, iEn)]
         target = df2f @System selectStep
 
     it "behaves as idDF when there is no branch" $ do
-      let target' = L.map (\(d, v, r) -> (maybeIsX d, v, r)) . target @Int @Int
+      let target' = L.map (\(d, v, r) -> (maybeIsX d, v, r)) . target @Int
 
       target' [(undefined, False, False)] `shouldBe` [(Nothing, False, False)]
       target' [(undefined, False, True)] `shouldBe` [(Nothing, False, True)]
@@ -134,7 +136,7 @@ spec = do
 
     it "collects given data with prioritising Left side when there is a branch" $ do
       let target' =
-            L.map (\(d, v, r) -> (maybeHasX d, v, r)) . target @(Int, Int) @(Either Int Int)
+            L.map (\(d, v, r) -> (maybeHasX d, v, r)) . target @(Either Int Int)
 
       target' [((undefined, undefined), (False, False), False)]
         `shouldBe` [(Nothing, False, (False, False))]
@@ -155,17 +157,17 @@ spec = do
 
   describe "stepSelect" $ do
     let target ::
-          forall i o oEn.
+          forall i oEn.
           NFDataX i =>
-          NFDataX o =>
           NFDataX oEn =>
-          SelectStep oEn o i =>
+          NFDataX (Select oEn i) =>
+          SelectStep oEn i =>
           [(i, Bool, oEn)] ->
-          [(o, oEn, Bool)]
+          [(Select oEn i, oEn, Bool)]
         target = df2f @System stepSelect
 
     it "behaves as idDF when there is no branch" $ do
-      let target' = L.map (\(d, v, r) -> (maybeIsX d, v, r)) . target @Int @Int
+      let target' = L.map (\(d, v, r) -> (maybeIsX d, v, r)) . target @Int
 
       target' [(undefined, False, False)] `shouldBe` [(Nothing, False, False)]
       target' [(undefined, False, True)] `shouldBe` [(Nothing, False, True)]
@@ -175,7 +177,7 @@ spec = do
     it "distributes given data" $ do
       let target' =
             L.map (\((dl, dr), v, r) -> ((maybeIsX dl, maybeIsX dr), v, r))
-              . target @(Either Int Int) @(Int, Int)
+              . target @(Either Int Int)
 
       target' [(undefined, False, (False, False))]
         `shouldBe` [((Nothing, Nothing), (False, False), False)]

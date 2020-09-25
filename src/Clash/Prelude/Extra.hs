@@ -4,7 +4,8 @@ module Clash.Prelude.Extra
 where
 
 import Clash.Prelude.DataFlow.Extra as Exports
-  ( SQueueMode (..),
+  ( QueueMode (..),
+    SQueueMode (..),
     SelectStep (..),
     compressDF,
     decompressDF,

@@ -1,8 +1,10 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Clash.Prelude.DataFlow.Extra where
 
@@ -343,18 +345,22 @@ queueDF clk rst ena mode = case mode of
      in (temp0, busy0, not <$> busy1)
 {-# NOINLINE queueDF #-}
 
-class SelectStep xEn x x' where
-  selectStep :: DataFlow dom xEn Bool x x'
-  stepSelect :: DataFlow dom Bool xEn x' x
+class SelectStep xEn x where
+  type Select xEn x :: Type
+  selectStep :: DataFlow dom xEn Bool (Select xEn x) x
+  stepSelect :: DataFlow dom Bool xEn x (Select xEn x)
 
-instance SelectStep Bool x x where
+instance SelectStep Bool x where
+  type Select Bool x = x
   selectStep = idDF
   stepSelect = idDF
 
 prior :: forall dom. Signal dom Bool
 prior = pure False
 
-instance (SelectStep xEn x x', SelectStep yEn y y') => SelectStep (xEn, yEn) (x, y) (Either x' y') where
+instance (SelectStep xEn x, SelectStep yEn y) => SelectStep (xEn, yEn) (Either x y) where
+  type Select (xEn, yEn) (Either x y) = (Select xEn x, Select yEn y)
+
   selectStep = (selectStep `parDF` selectStep) `seqDF` step
     where
       step = DF $ \(unbundle -> (idatA, idatB)) (unbundle -> (ivldA, ivldB)) ordyC ->

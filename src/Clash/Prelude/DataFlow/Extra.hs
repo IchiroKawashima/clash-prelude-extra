@@ -404,9 +404,9 @@ testDF clk rst ena n f (pure -> x) (pure -> i) = bundle (bundle (done, term), un
 
     (odat, ovld, irdy) = df (withClockResetEnable clk rst ena f) idat ivld ordy
 
-    idat = mux ivld ((!!) <$> x <*> iptr) (pure undefined)
-    ivld = ((/= snatToInteger (SNat @n)) <$> iptr) .&&. sleep
-    ordy = ((/= snatToInteger (SNat @m)) <$> optr)
+    idat = mux (ivld .&&. irdy) ((!!) <$> x <*> iptr) (pure undefined)
+    ivld = ((/= snatToInteger (SNat @m)) <$> iptr) .&&. sleep
+    ordy = ((/= snatToInteger (SNat @n)) <$> optr)
 
     sleep = (cnt - 1) - xcnt .>=. ((!!) <$> i <*> iptr)
     xcnt = regEn clk rst ena (-1) (ivld .&&. irdy) cnt
@@ -416,7 +416,7 @@ testDF clk rst ena n f (pure -> x) (pure -> i) = bundle (bundle (done, term), un
     optr = regEn clk rst ena 0 (ovld .&&. ordy) $ succ <$> optr
 
     y = register clk rst ena (repeat (undefined, undefined)) y'
-    y' = mux ovld (replace <$> optr <*> ((,) <$> odat <*> (cnt - 1) - ycnt) <*> y) y
+    y' = mux (ovld .&&. ordy) (replace <$> optr <*> ((,) <$> odat <*> (cnt - 1) - ycnt) <*> y) y
 
     done = not <$> ordy
     term = (>= n) <$> cnt

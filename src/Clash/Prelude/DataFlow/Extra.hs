@@ -500,8 +500,8 @@ testDF ::
   (HiddenClockResetEnable dom => DataFlow dom Bool Bool a b) ->
   Vec m a ->
   Vec m Int ->
-  Signal dom ((Bool, Bool), (Vec n b, Vec n Int))
-testDF clk rst ena n f (pure -> x) (pure -> i) = bundle (bundle (done, term), unzip <$> y)
+  ((Signal dom Bool, Signal dom Bool), (Signal dom (Vec n b), Signal dom (Vec n Int)))
+testDF clk rst ena n f (pure -> x) (pure -> i) = ((done, term), unbundle $ unzip <$> y)
   where
     cnt = register clk rst ena 0 $ succ <$> cnt
 
@@ -543,5 +543,5 @@ simulateDF n f x i = (sample y L.!! cnt, sample i' L.!! cnt)
     rst = resetGen
     ena = enableGen
 
-    (unbundle -> (fin, unbundle -> (y, i'))) = testDF clk rst ena n f x i
-    cnt = uncurry min $ both (L.length . L.takeWhile not . sample) $ unbundle fin
+    ((fin, (y, i'))) = testDF clk rst ena n f x i
+    cnt = uncurry min $ both (L.length . L.takeWhile not . sample) fin

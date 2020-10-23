@@ -103,7 +103,8 @@ spec = do
             . uncurry
               ( simulateDF @System @1 @1
                   100
-                  ( hideClockResetEnable decompressDF repeater
+                  ( hideClockResetEnable queueDF SMulti
+                      `seqDF` hideClockResetEnable decompressDF repeater
                       `seqDF` hideClockResetEnable compressDF counter
                   )
               )

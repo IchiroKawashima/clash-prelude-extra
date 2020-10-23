@@ -9,11 +9,7 @@
 module Clash.Prelude.DataFlow.Extra where
 
 import Clash.Explicit.Prelude
-import Clash.Prelude
-  ( HiddenClockResetEnable,
-    hideClockResetEnable,
-    withClockResetEnable,
-  )
+import Clash.Prelude (HiddenClockResetEnable, withClockResetEnable)
 import Clash.Signal.Internal (Signal ((:-)))
 import Control.Monad (guard)
 import Data.Constraint hiding ((&&&))
@@ -236,6 +232,7 @@ sourceDF :: forall dom en a b. DataFlow dom en (Bool, en) a (b, a)
 sourceDF =
   (DF $ \d v (unbundle -> (_, r)) -> (bundle (pure undefined, d), bundle (pure undefined, v), r))
     `seqDF` firstDF (DF $ \_ _ _ -> (pure undefined, pure False, pure undefined))
+{-# NOINLINE sourceDF #-}
 
 sinkDF :: forall dom en a b. DataFlow dom (Bool, en) en (b, a) a
 sinkDF =
@@ -243,6 +240,7 @@ sinkDF =
     `seqDF` ( DF $ \(unbundle -> (_, d)) (unbundle -> (_, v)) r ->
                 (d, v, bundle (pure undefined, r))
             )
+{-# NOINLINE sinkDF #-}
 
 traceDF ::
   forall dom en a.
@@ -289,6 +287,7 @@ ramDF clk rst ena mem iwdat = DF $ \iadr ivld ordy ->
       temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) iadr
       ordat = readNew clk rst ena (blockRamPow2 clk ena mem) temp0 iwdat
    in (ordat, busy0, not <$> busy1)
+{-# NOINLINE ramDF #-}
 
 regDF ::
   forall dom a.
@@ -310,6 +309,7 @@ regDF clk rst ena ini = DF $ \idat ivld ordy ->
       temp0 = regEn clk rst ena ini (lock0 .&&. (ordy .||. not <$> busy0)) $ mux busy1 temp1 idat
       temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) idat
    in (temp0, busy0, not <$> busy1)
+{-# NOINLINE regDF #-}
 
 $(singletons [d|data QueueMode = None | Mono | Multi|])
 
@@ -343,6 +343,7 @@ queueDF clk rst ena mode = case mode of
             mux busy1 temp1 idat
         temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) idat
      in (temp0, busy0, not <$> busy1)
+{-# NOINLINE queueDF #-}
 
 class SelectStep xEn x where
   type Select xEn x :: Type
@@ -381,110 +382,6 @@ instance (SelectStep xEn x, SelectStep yEn y) => SelectStep (xEn, yEn) (Either x
             odatC = fromRight undefined <$> idatA
          in (bundle (odatB, odatC), bundle (ovldB, ovldC), irdyA)
 
-selDF ::
-  forall dom a b c d.
-  DataFlow dom Bool Bool a b ->
-  DataFlow dom Bool Bool c d ->
-  DataFlow dom Bool Bool (Either a c) (Either b d)
-f `selDF` g = stepSelect `seqDF` (f `parDF` g) `seqDF` selectStep
-
-leftDF ::
-  forall dom a b c.
-  DataFlow dom Bool Bool a b ->
-  DataFlow dom Bool Bool (Either a c) (Either b c)
-leftDF f = f `selDF` idDF
-
-rightDF ::
-  forall dom a b c.
-  DataFlow dom Bool Bool a b ->
-  DataFlow dom Bool Bool (Either c a) (Either c b)
-rightDF g = idDF `selDF` g
-
-justDF :: forall dom a b. DataFlow dom Bool Bool a b -> DataFlow dom Bool Bool (Maybe a) (Maybe b)
-justDF f = pureDF (maybeToEither ()) `seqDF` rightDF f `seqDF` pureDF eitherToMaybe
-
-flipDF :: forall dom a b. DataFlow dom Bool Bool (Either a b) (Either b a)
-flipDF = DF $ \idat ivld ordy -> (flipEither <$> idat, ivld, ordy)
-  where
-    flipEither (Left x) = Right x
-    flipEither (Right x) = Left x
-
-inorder ::
-  forall dom a b.
-  HiddenClockResetEnable dom =>
-  DataFlow dom Bool Bool a b ->
-  DataFlow dom Bool Bool a b
-inorder f =
-  pureDF (,())
-    `seqDF` stepLock
-    `seqDF` (f `parDF` hideClockResetEnable queueDF SMono)
-    `seqDF` lockStep
-    `seqDF` pureDF fst
-
-selDF' ::
-  forall dom a b c d.
-  HiddenClockResetEnable dom =>
-  NFDataX b =>
-  NFDataX d =>
-  DataFlow dom Bool Bool a b ->
-  DataFlow dom Bool Bool c d ->
-  DataFlow dom Bool Bool (Either a c) (Either b d)
-selDF' f g = inorder $ f `selDF` g
-
-leftDF' ::
-  forall dom a b c.
-  HiddenClockResetEnable dom =>
-  NFDataX b =>
-  NFDataX c =>
-  DataFlow dom Bool Bool a b ->
-  DataFlow dom Bool Bool (Either a c) (Either b c)
-leftDF' f = f `selDF'` hideClockResetEnable queueDF SMulti
-
-rightDF' ::
-  forall dom a b c.
-  HiddenClockResetEnable dom =>
-  NFDataX b =>
-  NFDataX c =>
-  DataFlow dom Bool Bool a b ->
-  DataFlow dom Bool Bool (Either c a) (Either c b)
-rightDF' g = hideClockResetEnable queueDF SMulti `selDF'` g
-
-justDF' ::
-  forall dom a b.
-  HiddenClockResetEnable dom =>
-  NFDataX b =>
-  DataFlow dom Bool Bool a b ->
-  DataFlow dom Bool Bool (Maybe a) (Maybe b)
-justDF' f = pureDF (maybeToEither ()) `seqDF` rightDF' f `seqDF` pureDF eitherToMaybe
-
-parDF' ::
-  forall dom a b c d.
-  HiddenClockResetEnable dom =>
-  NFDataX b =>
-  NFDataX d =>
-  DataFlow dom Bool Bool a b ->
-  DataFlow dom Bool Bool c d ->
-  DataFlow dom Bool Bool (a, c) (b, d)
-f `parDF'` g = stepLock `seqDF` (f `parDF` g) `seqDF` lockStep
-
-firstDF' ::
-  forall dom a b c.
-  HiddenClockResetEnable dom =>
-  NFDataX b =>
-  NFDataX c =>
-  DataFlow dom Bool Bool a b ->
-  DataFlow dom Bool Bool (a, c) (b, c)
-firstDF' f = f `parDF'` hideClockResetEnable queueDF SMulti
-
-secondDF' ::
-  forall dom a b c.
-  HiddenClockResetEnable dom =>
-  NFDataX b =>
-  NFDataX c =>
-  DataFlow dom Bool Bool a b ->
-  DataFlow dom Bool Bool (c, a) (c, b)
-secondDF' g = hideClockResetEnable queueDF SMulti `parDF'` g
-
 testDF ::
   forall dom m n a b.
   HasCallStack =>
@@ -507,9 +404,9 @@ testDF clk rst ena n f (pure -> x) (pure -> i) = ((done, term), unbundle $ unzip
 
     (odat, ovld, irdy) = df (withClockResetEnable clk rst ena f) idat ivld ordy
 
-    idat = mux ivld ((!!) <$> x <*> iptr) (pure undefined)
-    ivld = ((/= snatToInteger (SNat @n)) <$> iptr) .&&. sleep
-    ordy = ((/= snatToInteger (SNat @m)) <$> optr)
+    idat = mux (ivld .&&. irdy) ((!!) <$> x <*> iptr) (pure undefined)
+    ivld = ((/= snatToInteger (SNat @m)) <$> iptr) .&&. sleep
+    ordy = ((/= snatToInteger (SNat @n)) <$> optr)
 
     sleep = (cnt - 1) - xcnt .>=. ((!!) <$> i <*> iptr)
     xcnt = regEn clk rst ena (-1) (ivld .&&. irdy) cnt
@@ -519,10 +416,11 @@ testDF clk rst ena n f (pure -> x) (pure -> i) = ((done, term), unbundle $ unzip
     optr = regEn clk rst ena 0 (ovld .&&. ordy) $ succ <$> optr
 
     y = register clk rst ena (repeat (undefined, undefined)) y'
-    y' = mux ovld (replace <$> optr <*> ((,) <$> odat <*> (cnt - 1) - ycnt) <*> y) y
+    y' = mux (ovld .&&. ordy) (replace <$> optr <*> ((,) <$> odat <*> (cnt - 1) - ycnt) <*> y) y
 
     done = not <$> ordy
     term = (>= n) <$> cnt
+{-# NOINLINE testDF #-}
 
 simulateDF ::
   forall dom m n a b.

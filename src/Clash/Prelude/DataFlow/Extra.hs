@@ -63,7 +63,6 @@ decompressDF ::
   (i -> (o, Maybe i)) ->
   DataFlow dom Bool Bool i (Bool, o)
 decompressDF clk rst ena f = DF $ curry3 $ mealyB clk rst ena (decompressLogic f) decompressInit
-{-# NOINLINE decompressDF #-}
 
 compressLogic ::
   forall i o.
@@ -103,7 +102,6 @@ compressDF ::
   (Maybe o -> i -> o) ->
   DataFlow dom Bool Bool (Bool, i) o
 compressDF clk rst ena f = DF $ curry3 $ mealyB clk rst ena (compressLogic f) compressInit
-{-# NOINLINE compressDF #-}
 
 data UnfoldDF (i :: Type) (f :: TyFun Nat Type) :: Type
 
@@ -118,7 +116,6 @@ unfoldDF ::
   DataFlow dom Bool Bool i o ->
   DataFlow dom Bool (Vec (2 ^ k) Bool) i (Vec (2 ^ k) o)
 unfoldDF fn = unfoldDF' (Proxy @(UnfoldDF i)) (\SNat -> fn `seqDF` stepLock)
-{-# NOINLINE unfoldDF #-}
 
 unfoldDF' ::
   forall dom p k a.
@@ -168,7 +165,6 @@ unfoldDF' Proxy fn fk = DF $ go SNat
           vs = (++) <$> vsl <*> vsr
           (unbundle -> (rsl, rsr)) = splitAtI <$> rs
     go SNat _ _ _ = undefined
-{-# NOINLINE unfoldDF' #-}
 
 data FoldDF (o :: Type) (f :: TyFun Nat Type) :: Type
 
@@ -183,7 +179,6 @@ foldDF ::
   DataFlow dom Bool Bool (o, o) o ->
   DataFlow dom (Vec (2 ^ k) Bool) Bool (Vec (2 ^ k) i) o
 foldDF f0 fn = foldDF' (Proxy @(FoldDF o)) f0 (\SNat -> lockStep `seqDF` fn)
-{-# NOINLINE foldDF #-}
 
 foldDF' ::
   forall dom p k a.
@@ -226,13 +221,11 @@ foldDF' Proxy f0 fn = DF $ go SNat
 
             (d, v, unbundle -> (rl, rr)) = df (fn SNat) (bundle (dl, dr)) (bundle (vl, vr)) r
     go SNat _ _ _ = undefined
-{-# NOINLINE foldDF' #-}
 
 sourceDF :: forall dom en a b. DataFlow dom en (Bool, en) a (b, a)
 sourceDF =
   (DF $ \d v (unbundle -> (_, r)) -> (bundle (pure undefined, d), bundle (pure undefined, v), r))
     `seqDF` firstDF (DF $ \_ _ _ -> (pure undefined, pure False, pure undefined))
-{-# NOINLINE sourceDF #-}
 
 sinkDF :: forall dom en a b. DataFlow dom (Bool, en) en (b, a) a
 sinkDF =
@@ -240,7 +233,6 @@ sinkDF =
     `seqDF` ( DF $ \(unbundle -> (_, d)) (unbundle -> (_, v)) r ->
                 (d, v, bundle (pure undefined, r))
             )
-{-# NOINLINE sinkDF #-}
 
 traceDF ::
   forall dom en a.
@@ -287,7 +279,6 @@ ramDF clk rst ena mem iwdat = DF $ \iadr ivld ordy ->
       temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) iadr
       ordat = readNew clk rst ena (blockRamPow2 clk ena mem) temp0 iwdat
    in (ordat, busy0, not <$> busy1)
-{-# NOINLINE ramDF #-}
 
 regDF ::
   forall dom a.
@@ -309,7 +300,6 @@ regDF clk rst ena ini = DF $ \idat ivld ordy ->
       temp0 = regEn clk rst ena ini (lock0 .&&. (ordy .||. not <$> busy0)) $ mux busy1 temp1 idat
       temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) idat
    in (temp0, busy0, not <$> busy1)
-{-# NOINLINE regDF #-}
 
 $(singletons [d|data QueueMode = None | Mono | Multi|])
 
@@ -343,7 +333,6 @@ queueDF clk rst ena mode = case mode of
             mux busy1 temp1 idat
         temp1 = regEn clk rst ena undefined (lock1 .&&. not <$> busy1) idat
      in (temp0, busy0, not <$> busy1)
-{-# NOINLINE queueDF #-}
 
 class SelectStep xEn x where
   type Select xEn x :: Type
@@ -420,7 +409,6 @@ testDF clk rst ena n f (pure -> x) (pure -> i) = ((done, term), unbundle $ unzip
 
     done = not <$> ordy
     term = (>= n) <$> cnt
-{-# NOINLINE testDF #-}
 
 simulateDF ::
   forall dom m n a b.

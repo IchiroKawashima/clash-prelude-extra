@@ -1,0 +1,75 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 734a97a1b1de99ef79b012be1732853c4b916c6806c0dde7bfe374ad4f66b88b
+
+name:           clash-prelude-extra
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/IchiroKawashima/clash-prelude-extra#readme>
+homepage:       https://github.com/IchiroKawashima/clash-prelude-extra#readme
+bug-reports:    https://github.com/IchiroKawashima/clash-prelude-extra/issues
+author:         Ichiro Kawashima
+maintainer:     Kawashima.ichiro172@mail.kyutech.jp
+copyright:      2020 Ichiro Kawashima
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/IchiroKawashima/clash-prelude-extra
+
+library
+  exposed-modules:
+      Clash.Prelude.DataFlow.Extra
+      Clash.Prelude.Extra
+      Clash.Promoted.Nat.Extra
+      Clash.Sized.Fixed.Extra
+      Clash.Sized.Index.Extra
+      Clash.Sized.Vector.Extra
+      Data.Constraint.Nat.Extra
+  other-modules:
+      Paths_clash_prelude_extra
+  hs-source-dirs:
+      src
+  default-extensions: BangPatterns BinaryLiterals ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies ExplicitForAll InstanceSigs KindSignatures LambdaCase NoImplicitPrelude NoStarIsType PolyKinds RankNTypes ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeOperators ViewPatterns TemplateHaskell QuasiQuotes
+  ghc-options: -fplugin=GHC.TypeLits.Extra.Solver -fplugin=GHC.TypeLits.Normalise -fplugin=GHC.TypeLits.KnownNat.Solver -fconstraint-solver-iterations=0 -fexpose-all-unfoldings -fno-worker-wrapper -Wall -Wcompat
+  build-depends:
+      base >=4.7 && <5
+    , clash-prelude >=1.2.2 && <1.4
+    , constraints
+    , extra
+    , ghc-typelits-extra
+    , ghc-typelits-knownnat
+    , ghc-typelits-natnormalise
+    , singletons
+  default-language: Haskell2010
+
+test-suite clash-prelude-extra-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Clash.Prelude.DataFlow.ExtraSpec
+      Paths_clash_prelude_extra
+  hs-source-dirs:
+      test
+  default-extensions: BangPatterns BinaryLiterals ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies ExplicitForAll InstanceSigs KindSignatures LambdaCase NoImplicitPrelude NoStarIsType PolyKinds RankNTypes ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeOperators ViewPatterns TemplateHaskell QuasiQuotes
+  ghc-options: -fplugin=GHC.TypeLits.Extra.Solver -fplugin=GHC.TypeLits.Normalise -fplugin=GHC.TypeLits.KnownNat.Solver -fconstraint-solver-iterations=0 -fexpose-all-unfoldings -fno-worker-wrapper -Wall -Wcompat -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      QuickCheck
+    , base >=4.7 && <5
+    , clash-prelude >=1.2.2 && <1.4
+    , clash-prelude-extra
+    , constraints
+    , extra
+    , ghc-typelits-extra
+    , ghc-typelits-knownnat
+    , ghc-typelits-natnormalise
+    , hspec
+    , singletons
+  default-language: Haskell2010

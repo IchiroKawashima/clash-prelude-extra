@@ -1,14 +1,12 @@
-resolver: lts-15.14
+resolver: lts-17.1
 
 packages:
 - .
 
 extra-deps:
-- clash-ghc-1.2.4
-- clash-lib-1.2.4
-- clash-prelude-1.2.4
-- concurrent-supply-0.1.8
-- ghc-typelits-extra-0.4
+- clash-ghc-1.2.5
+- clash-lib-1.2.5
+- clash-prelude-1.2.5
 
 flags:
   clash-prelude:

@@ -18,4 +18,5 @@
 !/stack.yaml
 !/hie.yaml
 !/Setup.hs
+!/LICENSE
 !/*.cabal

@@ -222,17 +222,15 @@ foldDF' Proxy f0 fn = DF $ go SNat
             (d, v, unbundle -> (rl, rr)) = df (fn SNat) (bundle (dl, dr)) (bundle (vl, vr)) r
     go SNat _ _ _ = undefined
 
-sourceDF :: forall dom en a b. DataFlow dom en (Bool, en) a (b, a)
-sourceDF =
-  (DF $ \d v (unbundle -> (_, r)) -> (bundle (pure undefined, d), bundle (pure undefined, v), r))
-    `seqDF` firstDF (DF $ \_ _ _ -> (pure undefined, pure False, pure undefined))
+sourceDF :: forall dom en a b. b -> DataFlow dom en (Bool, en) a (b, a)
+sourceDF dat =
+  DF (\d v (unbundle -> (_, r)) -> (bundle (pure undefined, d), bundle (pure undefined, v), r))
+    `seqDF` firstDF (DF $ \_ _ _ -> (pure dat, pure True, pure undefined))
 
 sinkDF :: forall dom en a b. DataFlow dom (Bool, en) en (b, a) a
 sinkDF =
   firstDF (DF $ \_ _ _ -> (pure undefined, pure undefined, pure True))
-    `seqDF` ( DF $ \(unbundle -> (_, d)) (unbundle -> (_, v)) r ->
-                (d, v, bundle (pure undefined, r))
-            )
+    `seqDF` DF (\(unbundle -> (_, d)) (unbundle -> (_, v)) r -> (d, v, bundle (pure undefined, r)))
 
 traceDF ::
   forall dom en a.

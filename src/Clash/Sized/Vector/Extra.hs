@@ -21,6 +21,7 @@ dfold' Proxy f z = go
     go Nil = z
     go (y `Cons` ys) = case subMonotone1 @n @k @1 of
       Sub Dict -> f SNat y (go ys)
+{-# NOINLINE dfold' #-}
 
 dtfold' ::
   forall p k a.
@@ -44,3 +45,4 @@ dtfold' Proxy f0 fn = go
     go xs@(_ `Cons` _ `Cons` _) = case leTrans @(n - 1) @n @k of
       Sub Dict -> fn SNat (go xsl) (go xsr) where (xsl, xsr) = splitAtI xs
     go _ = undefined
+{-# NOINLINE dtfold' #-}

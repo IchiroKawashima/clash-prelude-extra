@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 734a97a1b1de99ef79b012be1732853c4b916c6806c0dde7bfe374ad4f66b88b
+-- hash: fb2eba35d786257ed115cee2318cfc6cd541c850d732699477423463481bf947
 
 name:           clash-prelude-extra
 version:        0.1.0.0
@@ -41,7 +41,7 @@ library
   ghc-options: -fplugin=GHC.TypeLits.Extra.Solver -fplugin=GHC.TypeLits.Normalise -fplugin=GHC.TypeLits.KnownNat.Solver -fconstraint-solver-iterations=0 -fexpose-all-unfoldings -fno-worker-wrapper -Wall -Wcompat
   build-depends:
       base >=4.7 && <5
-    , clash-prelude >=1.2.2 && <1.4
+    , clash-prelude
     , constraints
     , extra
     , ghc-typelits-extra
@@ -63,7 +63,7 @@ test-suite clash-prelude-extra-test
   build-depends:
       QuickCheck
     , base >=4.7 && <5
-    , clash-prelude >=1.2.2 && <1.4
+    , clash-prelude
     , clash-prelude-extra
     , constraints
     , extra

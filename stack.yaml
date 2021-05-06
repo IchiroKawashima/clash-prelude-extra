@@ -1,12 +1,15 @@
-resolver: lts-17.1
+resolver: lts-17.10
 
 packages:
 - .
 
 extra-deps:
-- clash-ghc-1.2.5
-- clash-lib-1.2.5
-- clash-prelude-1.2.5
+- clash-ghc-1.4.1
+- clash-lib-1.4.1
+- clash-prelude-1.4.1
+- arrows-0.4.4.2
+- Stream-0.4.7.2
+- lazysmallcheck-0.6
 
 flags:
   clash-prelude:

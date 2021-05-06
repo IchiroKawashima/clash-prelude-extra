@@ -4,13 +4,14 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Clash.Prelude.DataFlow.Extra where
 
 import Clash.Explicit.Prelude
 import Clash.Prelude (HiddenClockResetEnable, withClockResetEnable)
+import Clash.Prelude.DataFlow
 import Clash.Signal.Internal (Signal ((:-)))
 import Control.Monad (guard)
 import Data.Constraint hiding ((&&&))

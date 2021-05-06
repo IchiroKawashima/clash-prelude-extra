@@ -13,7 +13,7 @@ description:         Please see the README on GitHub at <https://github.com/Ichi
 
 dependencies:
 - base >= 4.7 && < 5
-- clash-prelude >= 1.2.2 && < 1.4
+- clash-prelude
 - ghc-typelits-extra
 - ghc-typelits-natnormalise
 - ghc-typelits-knownnat

@@ -1,12 +1,12 @@
-resolver: lts-17.1
+resolver: lts-19.4
 
 packages:
 - .
 
 extra-deps:
-- clash-ghc-1.2.5
-- clash-lib-1.2.5
-- clash-prelude-1.2.5
+- clash-ghc-1.6.3
+- clash-lib-1.6.3
+- clash-prelude-1.6.3
 
 flags:
   clash-prelude:

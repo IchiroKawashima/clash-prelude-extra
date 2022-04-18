@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 734a97a1b1de99ef79b012be1732853c4b916c6806c0dde7bfe374ad4f66b88b
+-- hash: efda633ecdefd3a8d338d76105b7627f6ded80e6ad837e75c9cde3f60253414a
 
 name:           clash-prelude-extra
 version:        0.1.0.0
@@ -37,17 +37,48 @@ library
       Paths_clash_prelude_extra
   hs-source-dirs:
       src
-  default-extensions: BangPatterns BinaryLiterals ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies ExplicitForAll InstanceSigs KindSignatures LambdaCase NoImplicitPrelude NoStarIsType PolyKinds RankNTypes ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeOperators ViewPatterns TemplateHaskell QuasiQuotes
+  default-extensions:
+      BangPatterns
+      BinaryLiterals
+      ConstraintKinds
+      DataKinds
+      DefaultSignatures
+      DeriveAnyClass
+      DeriveDataTypeable
+      DeriveFoldable
+      DeriveFunctor
+      DeriveGeneric
+      DeriveLift
+      DeriveTraversable
+      DerivingStrategies
+      ExplicitForAll
+      InstanceSigs
+      KindSignatures
+      LambdaCase
+      NoImplicitPrelude
+      NoStarIsType
+      PolyKinds
+      RankNTypes
+      ScopedTypeVariables
+      StandaloneDeriving
+      TupleSections
+      TypeApplications
+      TypeFamilies
+      TypeOperators
+      ViewPatterns
+      TemplateHaskell
+      QuasiQuotes
   ghc-options: -fplugin=GHC.TypeLits.Extra.Solver -fplugin=GHC.TypeLits.Normalise -fplugin=GHC.TypeLits.KnownNat.Solver -fconstraint-solver-iterations=0 -fexpose-all-unfoldings -fno-worker-wrapper -Wall -Wcompat
   build-depends:
-      base >=4.7 && <5
-    , clash-prelude >=1.2.2 && <1.4
+      base
+    , clash-prelude
     , constraints
     , extra
     , ghc-typelits-extra
     , ghc-typelits-knownnat
     , ghc-typelits-natnormalise
     , singletons
+    , singletons-th
   default-language: Haskell2010
 
 test-suite clash-prelude-extra-test
@@ -58,12 +89,42 @@ test-suite clash-prelude-extra-test
       Paths_clash_prelude_extra
   hs-source-dirs:
       test
-  default-extensions: BangPatterns BinaryLiterals ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveDataTypeable DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies ExplicitForAll InstanceSigs KindSignatures LambdaCase NoImplicitPrelude NoStarIsType PolyKinds RankNTypes ScopedTypeVariables StandaloneDeriving TupleSections TypeApplications TypeFamilies TypeOperators ViewPatterns TemplateHaskell QuasiQuotes
+  default-extensions:
+      BangPatterns
+      BinaryLiterals
+      ConstraintKinds
+      DataKinds
+      DefaultSignatures
+      DeriveAnyClass
+      DeriveDataTypeable
+      DeriveFoldable
+      DeriveFunctor
+      DeriveGeneric
+      DeriveLift
+      DeriveTraversable
+      DerivingStrategies
+      ExplicitForAll
+      InstanceSigs
+      KindSignatures
+      LambdaCase
+      NoImplicitPrelude
+      NoStarIsType
+      PolyKinds
+      RankNTypes
+      ScopedTypeVariables
+      StandaloneDeriving
+      TupleSections
+      TypeApplications
+      TypeFamilies
+      TypeOperators
+      ViewPatterns
+      TemplateHaskell
+      QuasiQuotes
   ghc-options: -fplugin=GHC.TypeLits.Extra.Solver -fplugin=GHC.TypeLits.Normalise -fplugin=GHC.TypeLits.KnownNat.Solver -fconstraint-solver-iterations=0 -fexpose-all-unfoldings -fno-worker-wrapper -Wall -Wcompat -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck
-    , base >=4.7 && <5
-    , clash-prelude >=1.2.2 && <1.4
+    , base
+    , clash-prelude
     , clash-prelude-extra
     , constraints
     , extra
@@ -72,4 +133,5 @@ test-suite clash-prelude-extra-test
     , ghc-typelits-natnormalise
     , hspec
     , singletons
+    , singletons-th
   default-language: Haskell2010

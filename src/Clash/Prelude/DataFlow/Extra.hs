@@ -11,6 +11,7 @@ module Clash.Prelude.DataFlow.Extra where
 
 import Clash.Explicit.Prelude
 import Clash.Prelude (HiddenClockResetEnable, withClockResetEnable)
+import Clash.Prelude.DataFlow
 import Clash.Signal.Internal (Signal ((:-)))
 import Control.Monad (guard)
 import Data.Constraint hiding ((&&&))
@@ -22,7 +23,7 @@ import qualified Data.List as L
 import Data.Maybe
 import Data.Proxy
 import Data.Singletons
-import Data.Singletons.TH hiding (type (<=))
+import Data.Singletons.TH
 import Data.Tuple.Extra
 import Debug.Trace
 import GHC.Stack
